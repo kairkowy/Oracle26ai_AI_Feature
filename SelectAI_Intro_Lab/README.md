@@ -75,6 +75,19 @@ sequenceDiagram
 
 Select AI와 SQL 실행 엔진은 Oracle AI Database 내부에 위치합니다. SQL 생성에는 스키마 메타데이터를 사용하며, `narrate`에서는 조회 결과도 LLM으로 전달됩니다.
 
+## SELECT AI 실행 방법
+
+세션에 Profile(사용자지정)을 설정한 후, 다음 구조로 실행합니다.
+
+```sql
+SELECT AI actions 자연어 질문;
+```
+
+- **SELECT AI**: 자연어 요청을 Select AI로 처리하도록 지정합니다.
+- **actions**: 수행할 Action 하나를 지정하는 자리입니다. `runsql`, `showsql`, `explainsql`, `narrate` 등을 사용하며, 생략하면 `runsql`이 적용됩니다.
+- **자연어 질문**: 조회하거나 분석할 내용을 자연어로 입력합니다.
+- **;**: SQL 문장의 끝을 나타냅니다.
+
 참고: [Select AI 개요](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-about.html), [AI 프로파일](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/manage-ai-profiles.html), [메타데이터와 Annotation](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/data-and-metadata-concepts.html), [Action별 동작](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
 
 네트워크 접근 제어 참고: [DBMS_NETWORK_ACL_ADMIN](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_NETWORK_ACL_ADMIN.html)
