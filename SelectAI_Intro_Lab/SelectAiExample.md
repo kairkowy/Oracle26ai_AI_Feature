@@ -203,6 +203,12 @@ DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
 DEFINE OLLAMA_MODEL = gemma2:9b
 
 BEGIN
+  -- 기존 프로파일 삭제: 없으면 무시
+  DBMS_CLOUD_AI.DROP_PROFILE(
+    profile_name => 'SELECTAI_PRODUCTS_NOANN',
+    force        => TRUE
+  );
+
   DBMS_CLOUD_AI.CREATE_PROFILE(
     profile_name => 'SELECTAI_PRODUCTS_NOANN',
     attributes   => '{
@@ -287,6 +293,12 @@ DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
 DEFINE OLLAMA_MODEL = gemma2:9b
 
 BEGIN
+  -- 기존 프로파일 삭제: 없으면 무시
+  DBMS_CLOUD_AI.DROP_PROFILE(
+    profile_name => 'SELECTAI_PRODUCTS_ANN',
+    force        => TRUE
+  );
+
   DBMS_CLOUD_AI.CREATE_PROFILE(
     profile_name => 'SELECTAI_PRODUCTS_ANN',
     attributes   => '{
@@ -360,6 +372,6 @@ SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
 
 프로파일 이름과 `annotations` 값을 제외한 LLM·대상 객체·처리 옵션은 두 파트에서 동일하게 유지합니다. `comments=false`와 `conversation=false`도 유지하여 Comment와 이전 대화의 영향을 줄입니다. `comments`와 `annotations`는 각각 별도 옵션입니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/generate-and-improve-sql-queries.html)
 
-동일 이름의 프로파일이 이미 있으면 생성 구문은 오류가 발생합니다. 기존 설정을 확인한 뒤 필요한 속성을 변경합니다. 새 DB 세션으로 접속할 때는 해당 Part의 `SET_PROFILE`을 다시 실행합니다.
+프로파일 생성 구문은 해당 Part의 기존 프로파일을 먼저 삭제한 후 다시 생성합니다. `force => TRUE`는 프로파일이 없어도 삭제 단계에서 오류가 발생하지 않도록 합니다. 새 DB 세션으로 접속할 때는 해당 Part의 `SET_PROFILE`을 다시 실행합니다.
 
 생성 SQL은 기대 SQL 및 조회 결과와 함께 검증합니다.
