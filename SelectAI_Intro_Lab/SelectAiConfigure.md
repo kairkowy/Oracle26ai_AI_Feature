@@ -1,13 +1,12 @@
 # SELECT AI 실습환경 구성
 
-이 문서는 온프레미스 Select AI 실습을 위한 `DBMS_CLOUD` 패키지 설치, Wallet 구성, 실습 계정(`lab00`~`lab19`)의 권한·ACL 설정을 다룹니다. 데이터 복사와 Annotation 등록은 [샘플 데이터 구성](SampleDataConfig.md)에서 진행합니다. Part별 프로파일은 [SELECT AI 예제](SelectAiExample.md)에서 생성합니다. `lab00`~`lab19` 계정과 SH의 전체 9개 테이블 및 데이터는 대상 PDB에 준비되어 있어야 합니다. PDB 권한·ACL 설정은 계정명을 입력하여 각 계정에 반복 적용합니다.
+이 문서는 온프레미스 Select AI 실습을 위한 `DBMS_CLOUD` 패키지 설치, Wallet 구성, 실습 계정(`lab00`~`lab19`)의 CDB·PDB ACL 설정을 다룹니다. 계정·역할·quota·SH 조회 및 패키지 실행 권한은 [실습 계정 관리](lab_admin.md)에서 준비합니다. 데이터 복사와 Annotation 등록은 [샘플 데이터 구성](SampleDataConfig.md)에서 진행합니다. Part별 프로파일은 [SELECT AI 예제](SelectAiExample.md)에서 생성합니다. `lab00`~`lab19` 계정과 SH의 전체 9개 테이블 및 데이터는 대상 PDB에 준비되어 있어야 합니다. PDB ACL 설정은 계정명을 입력하여 각 계정에 반복 적용합니다.
 
 Shell 명령은 DB 서버의 Oracle 소프트웨어 소유 OS 계정에서, SQL은 SQL*Plus 또는 SQLcl에서 실행합니다. Oracle AI Database 26ai의 해당 설치 스크립트를 제공하는 RU 환경을 기준으로 합니다. PDB 이름, 테이블스페이스, Wallet 경로, Ollama 호스트·엔드포인트·모델은 실제 환경에 맞게 변경합니다. DB 서버에서 Ollama 호스트로 접속할 수 있어야 합니다.
 
 | 설정 | 예시 값 | 설명 |
 |---|---|---|
 | 대상 PDB | `orclpdb1` | 실습 계정과 SH 전체 테이블이 있는 PDB |
-| 테이블스페이스 | `USERS` | 각 계정의 실습 테이블을 저장할 테이블스페이스 |
 | Wallet 경로 | `/home/oracle/wallets/ssl` | DB 서버의 Oracle OS 계정이 읽을 수 있는 자동 로그인 Wallet 디렉터리 |
 | Ollama 호스트 | `service-ollama` | ACL에는 프로토콜·포트·경로를 제외한 호스트만 지정 |
 | Ollama 엔드포인트 | `http://service-ollama/v1` | Ollama 프록시 구성 예시 주소. 실제 환경에 맞게 변경 |
@@ -110,7 +109,7 @@ WHERE  property_name = 'SSL_WALLET';
 
 참고: [Oracle SSL Wallet 구성 안내](https://docs.oracle.com/en/database/oracle/oracle-database/26/sutil/create-ssl-wallet-with-certificates.html)
 
-## 3. 관리자: 실행 권한과 CDB·PDB ACL 등록
+## 3. 관리자: CDB·PDB ACL 등록
 
 SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서는 패키지 소유 계정 `C##CLOUD$SERVICE`, 대상 PDB에서는 입력한 실습 계정의 ACL을 등록합니다. 각 계정에 HTTP 호출과 네트워크 접근 권한을 지정하고, 해당 컨테이너에서 등록 결과를 확인합니다.
 
@@ -123,7 +122,6 @@ SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서
 
 ```sql
 DEFINE LAB_PDB = orclpdb1
-DEFINE LAB_TABLESPACE = USERS
 DEFINE OLLAMA_HOST = service-ollama
 ACCEPT LAB_USER CHAR DEFAULT 'lab00' PROMPT '설정할 실습 계정(lab00~lab19, 기본 lab00): '
 
@@ -160,25 +158,8 @@ WHERE  host = '&&OLLAMA_HOST'
 AND    principal = 'C##CLOUD$SERVICE'
 ORDER BY privilege;
 
--- PDB: 입력한 실습 계정의 실행 권한과 데이터 접근 권한
-ALTER SESSION SET CONTAINER = &&LAB_PDB;
-
-GRANT CREATE SESSION, CREATE TABLE TO &&LAB_USER;
-GRANT EXECUTE ON DBMS_CLOUD TO &&LAB_USER;
-GRANT EXECUTE ON DBMS_CLOUD_AI TO &&LAB_USER;
-GRANT SELECT ON SH.COUNTRIES TO &&LAB_USER;
-GRANT SELECT ON SH.CUSTOMERS TO &&LAB_USER;
-GRANT SELECT ON SH.PRODUCTS TO &&LAB_USER;
-GRANT SELECT ON SH.TIMES TO &&LAB_USER;
-GRANT SELECT ON SH.CHANNELS TO &&LAB_USER;
-GRANT SELECT ON SH.PROMOTIONS TO &&LAB_USER;
-GRANT SELECT ON SH.SUPPLEMENTARY_DEMOGRAPHICS TO &&LAB_USER;
-GRANT SELECT ON SH.SALES TO &&LAB_USER;
-GRANT SELECT ON SH.COSTS TO &&LAB_USER;
-
-ALTER USER &&LAB_USER QUOTA 1G ON &&LAB_TABLESPACE;
-
 -- PDB: 입력한 실습 계정에서 Ollama 서비스에 접근할 수 있도록 등록
+ALTER SESSION SET CONTAINER = &&LAB_PDB;
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
     host => '&&OLLAMA_HOST',
@@ -200,14 +181,6 @@ FROM   dba_host_aces
 WHERE  host = '&&OLLAMA_HOST'
 AND    principal = UPPER('&&LAB_USER')
 ORDER BY privilege;
-
--- 대상 PDB에서 패키지 실행 권한 확인
-SELECT grantee, owner, table_name AS package_name, privilege
-FROM   dba_tab_privs
-WHERE  grantee = UPPER('&&LAB_USER')
-AND    table_name IN ('DBMS_CLOUD', 'DBMS_CLOUD_AI')
-AND    privilege = 'EXECUTE'
-ORDER BY table_name;
 
 WHENEVER SQLERROR CONTINUE NONE
 ```
