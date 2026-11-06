@@ -110,6 +110,14 @@ erDiagram
 
 참고: [Oracle SH 테이블 정의](https://docs.oracle.com/en/database/oracle/oracle-database/26/comsc/SH-sample-schema-table-descriptions.html), [공식 테이블 생성 스크립트](https://github.com/oracle-samples/db-sample-schemas/blob/main/sales_history/sh_create.sql), [공식 샘플 데이터](https://github.com/oracle-samples/db-sample-schemas/blob/main/sales_history/sh_populate.sql)
 
+## 질문 예제
+
+1. 상품 대분류별 상품 수를 구하고, 상품 수가 많은 순서로 보여줘.
+2. 야구(Baseball) 대분류에 속한 상품의 상품명, 소분류, 정가를 정가가 높은 순서로 보여줘.
+3. 상품 정가가 100 이상인 상품 중 정가가 가장 높은 5개의 상품명과 정가를 보여줘. 정가가 같으면 상품 ID가 작은 순서로 골라줘.
+4. 상품 소분류별 평균 정가와 평균 최저 가격을 구하고, 평균 정가가 높은 순서로 보여줘.
+5. 정가가 최저 가격보다 높은 상품의 상품명, 정가, 최저 가격과 두 가격의 차이를 구하고, 가격 차이가 큰 순서로 보여줘.
+
 ## Part 1. Annotation을 사용하지 않는 예제
 
 Annotation을 사용하지 않은 상태에서 자연어 질문으로 SQL을 생성·실행합니다. 생성된 SQL과 기대 결과를 비교하여 업무 의미가 충분히 반영되는지 확인합니다.
