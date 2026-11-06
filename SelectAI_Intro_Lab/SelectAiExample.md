@@ -17,6 +17,77 @@
 
 `SH.PRODUCTS`는 Oracle의 판매 이력 샘플 스키마에서 **상품 기준정보**를 관리하는 테이블입니다. 상품별로 한 행을 저장하며, 기본키는 `PROD_ID`입니다. 상품명·설명, 대분류·소분류, 가격, 공급자와 상태 등의 정보를 포함합니다.
 
+### 테이블 관계 구조도
+
+기본 실습 대상은 `PRODUCTS`입니다. 다음은 관계 이해를 위해 판매·원가·고객 등 SH의 주요 테이블과 연결 키를 함께 표시한 구조도입니다. 각 테이블에는 주요 컬럼만 표시했습니다.
+
+```mermaid
+erDiagram
+    direction LR
+
+    PRODUCTS {
+        NUMBER PROD_ID PK
+        VARCHAR2 PROD_NAME
+        VARCHAR2 PROD_CATEGORY
+        NUMBER PROD_LIST_PRICE
+    }
+    SALES {
+        NUMBER PROD_ID FK
+        NUMBER CUST_ID FK
+        DATE TIME_ID FK
+        NUMBER CHANNEL_ID FK
+        NUMBER PROMO_ID FK
+        NUMBER QUANTITY_SOLD
+        NUMBER AMOUNT_SOLD
+    }
+    COSTS {
+        NUMBER PROD_ID FK
+        DATE TIME_ID FK
+        NUMBER CHANNEL_ID FK
+        NUMBER PROMO_ID FK
+        NUMBER UNIT_COST
+        NUMBER UNIT_PRICE
+    }
+    CUSTOMERS {
+        NUMBER CUST_ID PK
+        NUMBER COUNTRY_ID FK
+        VARCHAR2 CUST_FIRST_NAME
+        VARCHAR2 CUST_LAST_NAME
+    }
+    COUNTRIES {
+        NUMBER COUNTRY_ID PK
+        VARCHAR2 COUNTRY_NAME
+    }
+    TIMES {
+        DATE TIME_ID PK
+        NUMBER CALENDAR_YEAR
+        VARCHAR2 CALENDAR_MONTH_DESC
+    }
+    CHANNELS {
+        NUMBER CHANNEL_ID PK
+        VARCHAR2 CHANNEL_DESC
+    }
+    PROMOTIONS {
+        NUMBER PROMO_ID PK
+        VARCHAR2 PROMO_NAME
+    }
+
+    PRODUCTS ||--o{ SALES : PROD_ID
+    PRODUCTS ||--o{ COSTS : PROD_ID
+    COUNTRIES ||--o{ CUSTOMERS : COUNTRY_ID
+    CUSTOMERS ||--o{ SALES : CUST_ID
+    TIMES ||--o{ SALES : TIME_ID
+    TIMES ||--o{ COSTS : TIME_ID
+    CHANNELS ||--o{ SALES : CHANNEL_ID
+    CHANNELS ||--o{ COSTS : CHANNEL_ID
+    PROMOTIONS ||--o{ SALES : PROMO_ID
+    PROMOTIONS ||--o{ COSTS : PROMO_ID
+```
+
+`PK`는 기본키, `FK`는 외래키입니다. 관계선은 부모 테이블의 한 행에 자식 테이블의 여러 행이 연결될 수 있음을 나타냅니다.
+
+`SALES`는 판매금액·수량, `COSTS`는 단위 원가·가격을 관리합니다. 상품·일자·채널·프로모션을 기준으로 연결되며, `SALES`는 고객 정보와도 연결됩니다. 고객의 국가는 `CUSTOMERS`를 통해 확인합니다.
+
 ### 주요 데이터 구조
 
 | 구분 | 주요 컬럼 | 내용 |
