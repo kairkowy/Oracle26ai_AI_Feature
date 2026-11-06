@@ -10,35 +10,7 @@
 
 다음은 NL2SQL을 중심으로 표현한 개념 구조입니다.
 
-```mermaid
----
-config:
-  themeVariables:
-    fontSize: 22px
-  flowchart:
-    nodeSpacing: 35
-    rankSpacing: 40
-    padding: 20
----
-flowchart TB
-    U["사용자 / 앱"]
-    L["LLM"]
-
-    subgraph DB["Oracle AI Database"]
-        C["Profile(사용자지정)<br/>메타데이터 · Annotation"]
-        S["Select AI<br/>DBMS_CLOUD_AI"]
-        E["SQL 실행 · 업무 데이터"]
-
-        C -.-> S
-        S -->|"④ SQL 실행"| E
-        E -->|"조회 결과"| S
-    end
-
-    U -->|"① 질문 + Action"| S
-    S -->|"② 질문 + 메타데이터<br/>네트워크 ACL 적용"| L
-    L -->|"③ SQL"| S
-    S -->|"⑤ 응답"| U
-```
+![SELECT AI 구조](images/select-ai-architecture.svg)
 
 **Select AI**는 Profile(사용자지정)과 메타데이터를 활용해 LLM에 SQL 생성을 요청하고, **Action**에 따라 SQL을 보여주거나 실행 결과를 반환합니다. `narrate`는 조회 결과를 LLM에 다시 전달하여 자연어로 설명합니다.
 
@@ -67,7 +39,7 @@ config:
     boxMargin: 6
     noteMargin: 6
     messageMargin: 24
-    mirrorActors: false
+    mirrorActors: true
 ---
 sequenceDiagram
     participant U as 사용자 / 앱

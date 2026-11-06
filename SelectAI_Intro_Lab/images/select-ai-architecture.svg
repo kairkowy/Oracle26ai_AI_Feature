@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+  <title id="title">SELECT AI 구조</title>
+  <desc id="desc">가로로 확장한 Oracle AI Database 내부에 Profile, Select AI, SQL 실행과 업무 데이터를 배치한 구조도. 자연어 질문, LLM SQL 생성, SQL 실행, 응답의 다섯 단계를 표시한다.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1200" height="430" fill="#ffffff"/>
+  <g font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif" text-anchor="middle" fill="#172b4d">
+    <rect x="20" y="185" width="1160" height="225" rx="14" fill="#f1f5f9" stroke="#64748b" stroke-width="2"/>
+    <text x="205" y="222" font-size="25" font-weight="700">Oracle AI Database</text>
+
+    <rect x="170" y="15" width="250" height="65" rx="10" fill="#e8f0fe" stroke="#5179b8" stroke-width="2"/>
+    <text x="295" y="56" font-size="24" font-weight="700">사용자 / 앱</text>
+    <rect x="825" y="15" width="250" height="65" rx="10" fill="#e8f0fe" stroke="#5179b8" stroke-width="2"/>
+    <text x="950" y="56" font-size="24" font-weight="700">LLM</text>
+
+    <rect x="50" y="260" width="310" height="115" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <text x="205" y="303" font-size="23" font-weight="700">Profile(사용자지정)</text>
+    <text x="205" y="342" font-size="21">메타데이터 · Annotation</text>
+
+    <rect x="455" y="260" width="275" height="115" rx="10" fill="#dceafe" stroke="#3b6fb6" stroke-width="2"/>
+    <text x="592" y="303" font-size="26" font-weight="700">Select AI</text>
+    <text x="592" y="342" font-size="22">DBMS_CLOUD_AI</text>
+
+    <rect x="890" y="260" width="255" height="115" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+    <text x="1017" y="303" font-size="24" font-weight="700">SQL 실행</text>
+    <text x="1017" y="342" font-size="22">업무 데이터</text>
+
+    <g fill="none" stroke="#475569" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#arrow)">
+      <polyline points="350,80 350,130 495,130 495,260"/>
+      <polyline points="455,275 405,275 405,165 240,165 240,80"/>
+      <polyline points="650,260 650,130 880,130 880,80"/>
+      <polyline points="1020,80 1020,245 700,245 700,260"/>
+      <polyline points="360,320 455,320" stroke-dasharray="6 5"/>
+      <polyline points="730,290 890,290"/>
+      <polyline points="890,355 730,355"/>
+    </g>
+    <g font-size="20">
+      <text x="440" y="116">① 질문 + Action</text>
+      <text x="300" y="152">⑤ 응답</text>
+      <text x="765" y="110">② 질문 + 메타데이터</text>
+      <text x="781" y="162" font-size="18">네트워크 ACL 적용</text>
+      <text x="1082" y="166">③ SQL</text>
+      <text x="810" y="279">④ SQL 실행</text>
+      <text x="810" y="343">조회 결과</text>
+    </g>
+  </g>
+</svg>
