@@ -89,7 +89,7 @@ Annotation을 사용하지 않은 상태에서 자연어 질문으로 SQL을 생
 
 ### 프로파일 생성과 적용: SELECTAI_PRODUCTS_NOANN
 
-Ollama 엔드포인트와 모델명을 실제 환경에 맞게 변경합니다. 인증 없는 Ollama 프록시 구성이므로 `credential_name`은 지정하지 않습니다. `/v1` 경로는 [참조 문서](../SelectAI/SelectAI_Config_Run.md)의 23.26.2 구성을 기준으로 하며, 설치 버전과 프록시 구성에 맞게 조정합니다.
+Ollama 엔드포인트와 모델명을 실제 환경에 맞게 변경합니다. 인증 없는 Ollama 프록시 구성이므로 `credential_name`은 지정하지 않습니다. `/v1` 경로는 23.26.2 구성 예시이며, 설치 버전과 프록시 구성에 맞게 조정합니다. 환경 설정은 [SELECT AI 환경구성](SelectAiConfigure.md)에서 확인합니다.
 
 Part 1 프로파일은 `annotations=false`로 설정하여 Annotation을 SQL 생성에 사용하지 않습니다. `LAB_OWNER`는 현재 접속한 실습 계정에서 자동으로 설정하므로 각 사용자의 테이블을 대상으로 합니다.
 
