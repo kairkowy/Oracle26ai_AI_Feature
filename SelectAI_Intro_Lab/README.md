@@ -1,14 +1,14 @@
 # SELECT AI 소개 및 실습
 
-Select AI의 기본 개념과 Ollama 기반 실습환경을 살펴보고, Annotation 적용 전후의 SQL 생성 정확도를 비교하는 자료입니다. 다음 자료를 사용합니다. 계정 관리 문서는 계정 생성을 먼저 실행하고, 환경 구성의 패키지 설치 후 패키지 실행 권한을 부여하는 순서로 진행합니다.
+Select AI의 기본 개념과 Ollama 기반 실습환경을 살펴보고, Annotation 적용 전후의 SQL 생성 정확도를 비교하는 자료입니다. 실습 계정 관리 문서는 관리자용 자료입니다.
 
 | 순서 | 문서 | 주요 내용 |
 |---|---|---|
 | 1 | [SELECT AI 소개](SelectAi_Intro.md) | 개념, 구조, 처리 흐름, 실행 방법, Action과 프로파일 주요 속성 |
-| 2 | [SELECT AI 실습 계정 관리](lab_admin.md) | lab00~lab19 계정 생성, USERS 무제한 quota, CONNECT·RESOURCE, SH SELECT·패키지 실행 권한 |
-| 3 | [SELECT AI 실습환경 구성](SelectAiConfigure.md) | DBMS_CLOUD 설치, Wallet 구성, CDB·PDB ACL 설정 |
-| 4 | [SELECT AI 샘플 데이터 구성](SampleDataConfig.md) | SH 스키마 구조, 계정별 데이터 복사, 기본키·외래키, Annotation, 데이터·테이블 클린징 |
-| 5 | [SELECT AI 예제](SelectAiExample.md) | 단일 테이블·조인 질문, Annotation 미사용·사용 프로파일과 실행 구문 |
+| 2 | [SELECT AI 실습환경 구성](SelectAiConfigure.md) | DBMS_CLOUD 설치, Wallet 구성, CDB·PDB ACL 설정 |
+| 3 | [SELECT AI 샘플 데이터 구성](SampleDataConfig.md) | SH 스키마 구조, 계정별 데이터 복사, 기본키·외래키, Annotation, 데이터·테이블 클린징 |
+| 4 | [SELECT AI 예제](SelectAiExample.md) | 단일 테이블·조인 질문, Annotation 미사용·사용 프로파일과 실행 구문 |
+| 5 | [SELECT AI 실습 계정 관리](lab_admin.md) | 관리자용: lab00~lab19 계정 생성, USERS 무제한 quota, CONNECT·RESOURCE, SH SELECT·패키지 실행 권한 |
 
 실습 계정은 `lab00`~`lab19`이며, Oracle 샘플 SH의 전체 9개 테이블을 복사하여 사용합니다. 예제 스크립트는 각 문서의 코드 블록에 포함되어 있습니다.
 
