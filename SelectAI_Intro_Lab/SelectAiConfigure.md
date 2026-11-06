@@ -1,6 +1,6 @@
 # SELECT AI 실습환경 구성
 
-이 문서는 [온프레미스 Select AI 구성 문서](../SelectAI/SelectAI_Config_Run.md)를 바탕으로 `DBMS_CLOUD` 패키지 설치, Wallet 구성, 권한·ACL 설정과 lab00의 데이터 준비를 다룹니다. Part별 프로파일은 [SELECT AI 예제](SelectAiExample.md)에서 생성합니다. `lab00` 계정과 SH의 전체 9개 테이블 및 데이터는 대상 PDB에 준비되어 있어야 합니다.
+이 문서는 온프레미스 Select AI 실습을 위한 `DBMS_CLOUD` 패키지 설치, Wallet 구성, 권한·ACL 설정과 lab00의 데이터 준비를 다룹니다. Part별 프로파일은 [SELECT AI 예제](SelectAiExample.md)에서 생성합니다. `lab00` 계정과 SH의 전체 9개 테이블 및 데이터는 대상 PDB에 준비되어 있어야 합니다.
 
 Shell 명령은 DB 서버의 Oracle 소프트웨어 소유 OS 계정에서, SQL은 SQL*Plus 또는 SQLcl에서 실행합니다. Oracle AI Database 26ai의 해당 설치 스크립트를 제공하는 RU 환경을 기준으로 합니다. PDB 이름, 테이블스페이스, Wallet 경로, Ollama 호스트·엔드포인트·모델은 실제 환경에 맞게 변경합니다. DB 서버에서 Ollama 호스트로 접속할 수 있어야 합니다.
 
@@ -10,8 +10,8 @@ Shell 명령은 DB 서버의 Oracle 소프트웨어 소유 OS 계정에서, SQL�
 | 테이블스페이스 | `USERS` | `lab00`의 실습 테이블을 저장할 테이블스페이스 |
 | Wallet 경로 | `/home/oracle/wallets/ssl` | DB 서버의 Oracle OS 계정이 읽을 수 있는 자동 로그인 Wallet 디렉터리 |
 | Ollama 호스트 | `service-ollama` | ACL에는 프로토콜·포트·경로를 제외한 호스트만 지정 |
-| Ollama 엔드포인트 | `http://service-ollama/v1` | 참조 문서의 프록시 구성 기준 주소 |
-| 모델 | `gemma2:9b` | 참조 문서의 DB 쿼리 예시 모델. 실제 Ollama에 설치된 모델명으로 변경 |
+| Ollama 엔드포인트 | `http://service-ollama/v1` | Ollama 프록시 구성 예시 주소. 실제 환경에 맞게 변경 |
+| 모델 | `gemma2:9b` | DB 쿼리 실습용 예시 모델. 실제 Ollama에 설치된 모델명으로 변경 |
 
 ## 1. DBMS_CLOUD 패키지 설치
 
@@ -65,7 +65,7 @@ ORDER BY object_name, object_type;
 
 ## 2. Wallet 구성
 
-참조 문서의 온프레미스 환경에서는 HTTP Ollama 연결에서도 내부 처리 과정에서 `SSL_WALLET` 설정을 확인하므로 Wallet을 준비합니다. 이 설정이 없으면 `ORA-20000: Database property SSL_WALLET not found`가 발생할 수 있습니다. Wallet은 Ollama API의 사용자 인증 정보와는 별개입니다.
+이 실습의 온프레미스 환경에서는 HTTP Ollama 연결에서도 내부 처리 과정에서 `SSL_WALLET` 설정을 확인하므로 Wallet을 준비합니다. 이 설정이 없으면 `ORA-20000: Database property SSL_WALLET not found`가 발생할 수 있습니다. Wallet은 Ollama API의 사용자 인증 정보와는 별개입니다.
 
 ### 2.1 Oracle OS 계정: 자동 로그인 Wallet 생성
 
@@ -112,7 +112,7 @@ WHERE  property_name = 'SSL_WALLET';
 
 ## 3. 관리자: 실행 권한과 CDB·PDB ACL 등록
 
-SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서는 패키지 소유 계정 `C##CLOUD$SERVICE`, 대상 PDB에서는 실습 계정 `LAB00`의 ACL을 등록합니다. 참조 문서의 CDB `connect`·`resolve` 권한에 HTTP 호출 권한을 명시하고, 각 컨테이너에서 등록 결과를 확인합니다.
+SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서는 패키지 소유 계정 `C##CLOUD$SERVICE`, 대상 PDB에서는 실습 계정 `LAB00`의 ACL을 등록합니다. 각 계정에 HTTP 호출과 네트워크 접근 권한을 지정하고, 해당 컨테이너에서 등록 결과를 확인합니다.
 
 | 실행 위치 | ACL 대상 계정 | 예시 권한 |
 |---|---|---|
@@ -126,7 +126,7 @@ DEFINE LAB_PDB = orclpdb1
 DEFINE LAB_TABLESPACE = USERS
 DEFINE OLLAMA_HOST = service-ollama
 
--- CDB: 참조 문서의 Cloud 패키지 서비스 계정 ACL
+-- CDB: Cloud 패키지 서비스 계정 ACL
 ALTER SESSION SET CONTAINER = CDB$ROOT;
 
 BEGIN
