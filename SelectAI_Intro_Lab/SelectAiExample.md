@@ -6,8 +6,8 @@
 
 | 항목 | 내용 |
 |---|---|
-| 실습 데이터 | Oracle 샘플 `SH`(Sales History) 스키마의 전체 9개 테이블을 `LAB00`에 복사한 데이터 |
-| 실습 계정 | `lab00` |
+| 실습 데이터 | Oracle 샘플 `SH`(Sales History) 스키마의 전체 9개 테이블을 각 실습 계정에 복사한 데이터 |
+| 실습 계정 | `lab00`~`lab19` 중 본인 계정 |
 | 비교 방식 | 동일한 데이터와 자연어 질문을 사용하여 Annotation 적용 전후 비교 |
 | 확인 항목 | 테이블·컬럼 선택, 조인 관계, 조건과 집계의 정확성 |
 
@@ -39,11 +39,11 @@
 
 ## 실행 전 확인
 
-[SELECT AI 실습환경 구성](SelectAiConfigure.md)의 관리자 설정과 [샘플 데이터 구성](SampleDataConfig.md)의 데이터·Annotation 준비를 먼저 완료합니다. 이후 스크립트는 SQL*Plus 또는 SQLcl에서 **대상 PDB에 `lab00`으로 접속한 세션**에서 실행합니다. Part 1은 등록된 Annotation을 사용하지 않고, Part 2는 같은 Annotation을 사용합니다.
+[SELECT AI 실습환경 구성](SelectAiConfigure.md)의 관리자 설정과 [샘플 데이터 구성](SampleDataConfig.md)의 데이터·Annotation 준비를 먼저 완료합니다. 이후 스크립트는 SQL*Plus 또는 SQLcl에서 **대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속한 세션**에서 실행합니다. Part 1은 등록된 Annotation을 사용하지 않고, Part 2는 같은 Annotation을 사용합니다.
 
 ### ACL 확인
 
-Ollama 호스트는 구성 문서에서 등록한 값과 동일하게 지정합니다. `USER_HOST_ACES`에서 현재 계정의 호스트 접근 권한을 확인합니다. CDB의 서비스 계정 ACL은 구성 문서에 따라 관리자가 확인합니다.
+Ollama 호스트는 구성 문서에서 등록한 값과 동일하게 지정합니다. `USER_HOST_ACES`에서 현재 실습 계정의 호스트 접근 권한을 확인합니다. CDB의 서비스 계정 ACL은 구성 문서에 따라 관리자가 확인합니다.
 
 ```sql
 DEFINE OLLAMA_HOST = service-ollama
@@ -58,7 +58,7 @@ ORDER BY privilege;
 
 ### 데이터 확인
 
-실습 대상은 SH의 전체 9개 테이블을 `LAB00`에 복사한 데이터입니다. 모든 테이블에 데이터가 준비되었는지 확인하고, 상품의 주요 컬럼 값도 조회합니다.
+실습 대상은 SH의 전체 9개 테이블을 각 실습 계정에 복사한 데이터입니다. 모든 테이블에 데이터가 준비되었는지 확인하고, 상품의 주요 컬럼 값도 조회합니다.
 
 ```sql
 SELECT USER AS current_user,
@@ -91,11 +91,15 @@ Annotation을 사용하지 않은 상태에서 자연어 질문으로 SQL을 생
 
 Ollama 엔드포인트와 모델명을 실제 환경에 맞게 변경합니다. 인증 없는 Ollama 프록시 구성이므로 `credential_name`은 지정하지 않습니다. `/v1` 경로는 [참조 문서](../SelectAI/SelectAI_Config_Run.md)의 23.26.2 구성을 기준으로 하며, 설치 버전과 프록시 구성에 맞게 조정합니다.
 
-Part 1 프로파일은 `annotations=false`로 설정하여 Annotation을 SQL 생성에 사용하지 않습니다.
+Part 1 프로파일은 `annotations=false`로 설정하여 Annotation을 SQL 생성에 사용하지 않습니다. `LAB_OWNER`는 현재 접속한 실습 계정에서 자동으로 설정하므로 각 사용자의 테이블을 대상으로 합니다.
 
 ```sql
 DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
 DEFINE OLLAMA_MODEL = gemma2:9b
+
+COLUMN LAB_OWNER NEW_VALUE LAB_OWNER NOPRINT
+SELECT USER AS LAB_OWNER FROM dual;
+
 
 BEGIN
   -- 기존 프로파일 삭제: 없으면 무시
@@ -110,15 +114,15 @@ BEGIN
       "provider_endpoint": "&&OLLAMA_ENDPOINT",
       "model": "&&OLLAMA_MODEL",
       "object_list": [
-        {"owner": "LAB00", "name": "PRODUCTS"},
-        {"owner": "LAB00", "name": "SALES"},
-        {"owner": "LAB00", "name": "COSTS"},
-        {"owner": "LAB00", "name": "CUSTOMERS"},
-        {"owner": "LAB00", "name": "COUNTRIES"},
-        {"owner": "LAB00", "name": "TIMES"},
-        {"owner": "LAB00", "name": "CHANNELS"},
-        {"owner": "LAB00", "name": "PROMOTIONS"},
-        {"owner": "LAB00", "name": "SUPPLEMENTARY_DEMOGRAPHICS"}
+        {"owner": "&&LAB_OWNER", "name": "PRODUCTS"},
+        {"owner": "&&LAB_OWNER", "name": "SALES"},
+        {"owner": "&&LAB_OWNER", "name": "COSTS"},
+        {"owner": "&&LAB_OWNER", "name": "CUSTOMERS"},
+        {"owner": "&&LAB_OWNER", "name": "COUNTRIES"},
+        {"owner": "&&LAB_OWNER", "name": "TIMES"},
+        {"owner": "&&LAB_OWNER", "name": "CHANNELS"},
+        {"owner": "&&LAB_OWNER", "name": "PROMOTIONS"},
+        {"owner": "&&LAB_OWNER", "name": "SUPPLEMENTARY_DEMOGRAPHICS"}
       ],
       "comments": false,
       "annotations": false,
@@ -181,11 +185,15 @@ SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
 
 ### 프로파일 생성과 적용: SELECTAI_PRODUCTS_ANN
 
-Part 2 프로파일은 `annotations=true`로 설정하여 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#3-lab00-annotation-등록)에서 준비한 업무 정의와 조인 관계를 활용합니다. 엔드포인트와 모델은 Part 1과 동일하게 지정합니다.
+Part 2 프로파일은 `annotations=true`로 설정하여 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#3-실습-계정별-annotation-등록)에서 준비한 업무 정의와 조인 관계를 활용합니다. 엔드포인트와 모델은 Part 1과 동일하게 지정합니다.
 
 ```sql
 DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
 DEFINE OLLAMA_MODEL = gemma2:9b
+
+COLUMN LAB_OWNER NEW_VALUE LAB_OWNER NOPRINT
+SELECT USER AS LAB_OWNER FROM dual;
+
 
 BEGIN
   -- 기존 프로파일 삭제: 없으면 무시
@@ -200,15 +208,15 @@ BEGIN
       "provider_endpoint": "&&OLLAMA_ENDPOINT",
       "model": "&&OLLAMA_MODEL",
       "object_list": [
-        {"owner": "LAB00", "name": "PRODUCTS"},
-        {"owner": "LAB00", "name": "SALES"},
-        {"owner": "LAB00", "name": "COSTS"},
-        {"owner": "LAB00", "name": "CUSTOMERS"},
-        {"owner": "LAB00", "name": "COUNTRIES"},
-        {"owner": "LAB00", "name": "TIMES"},
-        {"owner": "LAB00", "name": "CHANNELS"},
-        {"owner": "LAB00", "name": "PROMOTIONS"},
-        {"owner": "LAB00", "name": "SUPPLEMENTARY_DEMOGRAPHICS"}
+        {"owner": "&&LAB_OWNER", "name": "PRODUCTS"},
+        {"owner": "&&LAB_OWNER", "name": "SALES"},
+        {"owner": "&&LAB_OWNER", "name": "COSTS"},
+        {"owner": "&&LAB_OWNER", "name": "CUSTOMERS"},
+        {"owner": "&&LAB_OWNER", "name": "COUNTRIES"},
+        {"owner": "&&LAB_OWNER", "name": "TIMES"},
+        {"owner": "&&LAB_OWNER", "name": "CHANNELS"},
+        {"owner": "&&LAB_OWNER", "name": "PROMOTIONS"},
+        {"owner": "&&LAB_OWNER", "name": "SUPPLEMENTARY_DEMOGRAPHICS"}
       ],
       "comments": false,
       "annotations": true,

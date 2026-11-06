@@ -1,6 +1,6 @@
 # SELECT AI 샘플 데이터 구성
 
-[SELECT AI 실습환경 구성](SelectAiConfigure.md)의 패키지·Wallet·권한·ACL 설정을 완료한 후, 대상 PDB에 `lab00`으로 접속하여 실행합니다. 이 문서는 SH 전체 9개 테이블의 데이터 복사, 기본키·외래키 생성과 Annotation 등록을 다룹니다.
+[SELECT AI 실습환경 구성](SelectAiConfigure.md)의 패키지·Wallet·권한·ACL 설정을 완료한 후, 대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속하여 실행합니다. 이 문서는 SH 전체 9개 테이블의 데이터 복사, 기본키·외래키 생성과 Annotation 등록을 다룹니다.
 
 Annotation은 실습 데이터를 준비할 때 함께 등록합니다. [SELECT AI 예제](SelectAiExample.md)의 Part 1은 `annotations=false`로 Annotation을 LLM에 전달하지 않고, Part 2는 `annotations=true`로 전달하므로 같은 데이터에서 효과를 비교할 수 있습니다.
 
@@ -8,7 +8,7 @@ Annotation은 실습 데이터를 준비할 때 함께 등록합니다. [SELECT 
 
 `SH.PRODUCTS`는 Oracle의 판매 이력 샘플 스키마에서 **상품 기준정보**를 관리하는 테이블입니다. 상품별로 한 행을 저장하며, 기본키는 `PROD_ID`입니다. 상품명·설명, 대분류·소분류, 가격, 공급자와 상태 등의 정보를 포함합니다.
 
-실습에서는 `PRODUCTS` 단일 테이블 질문과 `SALES`, `TIMES`, `CUSTOMERS`, `COUNTRIES`를 조인하는 질문을 함께 사용합니다. 두 프로파일의 `object_list`에는 `LAB00`에 복사한 SH의 전체 9개 테이블을 명시합니다.
+실습에서는 `PRODUCTS` 단일 테이블 질문과 `SALES`, `TIMES`, `CUSTOMERS`, `COUNTRIES`를 조인하는 질문을 함께 사용합니다. 두 프로파일의 `object_list`에는 각 실습 계정에 복사한 SH의 전체 9개 테이블을 명시합니다.
 
 ### 테이블 관계 구조도
 
@@ -111,99 +111,117 @@ erDiagram
 
 참고: [Oracle SH 테이블 정의](https://docs.oracle.com/en/database/oracle/oracle-database/26/comsc/SH-sample-schema-table-descriptions.html), [공식 테이블 생성 스크립트](https://github.com/oracle-samples/db-sample-schemas/blob/main/sales_history/sh_create.sql), [공식 샘플 데이터](https://github.com/oracle-samples/db-sample-schemas/blob/main/sales_history/sh_populate.sql)
 
-## 2. lab00: 실습 데이터 준비
+## 2. 실습 계정별 데이터 준비
 
-이후 스크립트는 **대상 PDB에 `lab00`으로 접속한 세션**에서 실행합니다. Annotation을 직접 추가할 수 있도록 SH의 전체 9개 테이블을 `LAB00`에 복사합니다. 원본 SH 데이터는 수정하지 않습니다.
+이후 스크립트는 **대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속한 세션**에서 실행합니다. 각 계정은 미리 생성하고 권한·테이블스페이스 할당량을 준비합니다. SH의 전체 9개 테이블을 입력한 계정에 복사하여 약 20명이 독립적으로 실습합니다. 원본 SH 데이터는 수정하지 않습니다.
 
-최초 준비 시 한 번 실행합니다. 이전 단계에서 `LAB00.PRODUCTS`와 기본키를 이미 만들었다면 아래의 해당 생성 구문은 생략하고 나머지 테이블을 추가합니다. 전체 데이터 복사를 위해 예시에서는 테이블스페이스 할당량을 `1G`로 설정했으며, 실제 데이터 크기에 맞게 조정합니다.
+최초 준비 시 한 번 실행합니다. 이전 단계에서 본인 계정의 `PRODUCTS`와 기본키를 이미 만들었다면 아래의 해당 생성 구문은 생략하고 나머지 테이블을 추가합니다. 전체 데이터 복사를 위해 환경 구성 문서에서는 계정별 테이블스페이스 할당량을 `1G`로 설정했으며, 실제 데이터 크기에 맞게 조정합니다.
 
 CTAS는 데이터를 일반 테이블로 복사하며 원본의 인덱스·분할·Comment·Annotation을 복제하지 않습니다. 조인 관계를 메타데이터로 제공할 수 있도록 기본키와 외래키는 복사 후 명시적으로 생성합니다.
 
+`ACCEPT`로 입력한 계정명을 SQL*Plus의 DEFINE 치환 변수 `LAB_USER`에 저장하여 사용합니다. Enter만 누르면 `lab00`을 사용합니다. 입력 없이 지정하려면 `ACCEPT` 줄 대신 `DEFINE LAB_USER = lab07`처럼 설정합니다. 입력 계정과 실제 접속 계정이 다르면 작업을 중단합니다.
+
 ```sql
+SET DEFINE ON
+ACCEPT LAB_USER CHAR DEFAULT 'lab00' PROMPT '실습 계정(lab00~lab19, 기본 lab00): '
+DEFINE LAB_USER
 DEFINE LAB_TABLESPACE = USERS
 
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
+BEGIN
+  IF NOT REGEXP_LIKE(UPPER('&&LAB_USER'), '^LAB(0[0-9]|1[0-9])$') THEN
+    RAISE_APPLICATION_ERROR(-20001, '실습 계정은 lab00~lab19 중 하나를 입력하십시오.');
+  END IF;
+  IF USER <> UPPER('&&LAB_USER') THEN
+    RAISE_APPLICATION_ERROR(-20002, '입력한 실습 계정으로 접속한 후 실행하십시오.');
+  END IF;
+END;
+/
+
 -- SH 전체 테이블의 데이터 복사
-CREATE TABLE countries TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..countries TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.countries;
 
-CREATE TABLE customers TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..customers TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.customers;
 
-CREATE TABLE products TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..products TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.products;
 
-CREATE TABLE times TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..times TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.times;
 
-CREATE TABLE channels TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..channels TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.channels;
 
-CREATE TABLE promotions TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..promotions TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.promotions;
 
-CREATE TABLE supplementary_demographics TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..supplementary_demographics TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.supplementary_demographics;
 
-CREATE TABLE sales TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..sales TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.sales;
 
-CREATE TABLE costs TABLESPACE &&LAB_TABLESPACE AS
+CREATE TABLE &&LAB_USER..costs TABLESPACE &&LAB_TABLESPACE AS
 SELECT * FROM sh.costs;
 
 -- 기본키 생성
-ALTER TABLE countries ADD CONSTRAINT lab00_countries_pk
+ALTER TABLE &&LAB_USER..countries ADD CONSTRAINT &&LAB_USER._countries_pk
   PRIMARY KEY (country_id);
-ALTER TABLE customers ADD CONSTRAINT lab00_customers_pk
+ALTER TABLE &&LAB_USER..customers ADD CONSTRAINT &&LAB_USER._customers_pk
   PRIMARY KEY (cust_id);
-ALTER TABLE products ADD CONSTRAINT lab00_products_pk
+ALTER TABLE &&LAB_USER..products ADD CONSTRAINT &&LAB_USER._products_pk
   PRIMARY KEY (prod_id);
-ALTER TABLE times ADD CONSTRAINT lab00_times_pk
+ALTER TABLE &&LAB_USER..times ADD CONSTRAINT &&LAB_USER._times_pk
   PRIMARY KEY (time_id);
-ALTER TABLE channels ADD CONSTRAINT lab00_channels_pk
+ALTER TABLE &&LAB_USER..channels ADD CONSTRAINT &&LAB_USER._channels_pk
   PRIMARY KEY (channel_id);
-ALTER TABLE promotions ADD CONSTRAINT lab00_promotions_pk
+ALTER TABLE &&LAB_USER..promotions ADD CONSTRAINT &&LAB_USER._promotions_pk
   PRIMARY KEY (promo_id);
-ALTER TABLE supplementary_demographics ADD CONSTRAINT lab00_supp_demo_pk
+ALTER TABLE &&LAB_USER..supplementary_demographics ADD CONSTRAINT &&LAB_USER._supp_demo_pk
   PRIMARY KEY (cust_id);
 
 -- 외래키 생성
-ALTER TABLE customers ADD CONSTRAINT lab00_customers_country_fk
-  FOREIGN KEY (country_id) REFERENCES countries (country_id);
-ALTER TABLE sales ADD CONSTRAINT lab00_sales_product_fk
-  FOREIGN KEY (prod_id) REFERENCES products (prod_id);
-ALTER TABLE sales ADD CONSTRAINT lab00_sales_customer_fk
-  FOREIGN KEY (cust_id) REFERENCES customers (cust_id);
-ALTER TABLE sales ADD CONSTRAINT lab00_sales_time_fk
-  FOREIGN KEY (time_id) REFERENCES times (time_id);
-ALTER TABLE sales ADD CONSTRAINT lab00_sales_channel_fk
-  FOREIGN KEY (channel_id) REFERENCES channels (channel_id);
-ALTER TABLE sales ADD CONSTRAINT lab00_sales_promo_fk
-  FOREIGN KEY (promo_id) REFERENCES promotions (promo_id);
-ALTER TABLE costs ADD CONSTRAINT lab00_costs_product_fk
-  FOREIGN KEY (prod_id) REFERENCES products (prod_id);
-ALTER TABLE costs ADD CONSTRAINT lab00_costs_time_fk
-  FOREIGN KEY (time_id) REFERENCES times (time_id);
-ALTER TABLE costs ADD CONSTRAINT lab00_costs_channel_fk
-  FOREIGN KEY (channel_id) REFERENCES channels (channel_id);
-ALTER TABLE costs ADD CONSTRAINT lab00_costs_promo_fk
-  FOREIGN KEY (promo_id) REFERENCES promotions (promo_id);
+ALTER TABLE &&LAB_USER..customers ADD CONSTRAINT &&LAB_USER._customers_country_fk
+  FOREIGN KEY (country_id) REFERENCES &&LAB_USER..countries (country_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_product_fk
+  FOREIGN KEY (prod_id) REFERENCES &&LAB_USER..products (prod_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_customer_fk
+  FOREIGN KEY (cust_id) REFERENCES &&LAB_USER..customers (cust_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_time_fk
+  FOREIGN KEY (time_id) REFERENCES &&LAB_USER..times (time_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_channel_fk
+  FOREIGN KEY (channel_id) REFERENCES &&LAB_USER..channels (channel_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_promo_fk
+  FOREIGN KEY (promo_id) REFERENCES &&LAB_USER..promotions (promo_id);
+ALTER TABLE &&LAB_USER..costs ADD CONSTRAINT &&LAB_USER._costs_product_fk
+  FOREIGN KEY (prod_id) REFERENCES &&LAB_USER..products (prod_id);
+ALTER TABLE &&LAB_USER..costs ADD CONSTRAINT &&LAB_USER._costs_time_fk
+  FOREIGN KEY (time_id) REFERENCES &&LAB_USER..times (time_id);
+ALTER TABLE &&LAB_USER..costs ADD CONSTRAINT &&LAB_USER._costs_channel_fk
+  FOREIGN KEY (channel_id) REFERENCES &&LAB_USER..channels (channel_id);
+ALTER TABLE &&LAB_USER..costs ADD CONSTRAINT &&LAB_USER._costs_promo_fk
+  FOREIGN KEY (promo_id) REFERENCES &&LAB_USER..promotions (promo_id);
 
 -- 전체 테이블 데이터 확인
-SELECT 'PRODUCTS' AS table_name, COUNT(*) AS row_count FROM products
-UNION ALL SELECT 'SALES', COUNT(*) FROM sales
-UNION ALL SELECT 'COSTS', COUNT(*) FROM costs
-UNION ALL SELECT 'CUSTOMERS', COUNT(*) FROM customers
-UNION ALL SELECT 'COUNTRIES', COUNT(*) FROM countries
-UNION ALL SELECT 'TIMES', COUNT(*) FROM times
-UNION ALL SELECT 'CHANNELS', COUNT(*) FROM channels
-UNION ALL SELECT 'PROMOTIONS', COUNT(*) FROM promotions
+SELECT 'PRODUCTS' AS table_name, COUNT(*) AS row_count FROM &&LAB_USER..products
+UNION ALL SELECT 'SALES', COUNT(*) FROM &&LAB_USER..sales
+UNION ALL SELECT 'COSTS', COUNT(*) FROM &&LAB_USER..costs
+UNION ALL SELECT 'CUSTOMERS', COUNT(*) FROM &&LAB_USER..customers
+UNION ALL SELECT 'COUNTRIES', COUNT(*) FROM &&LAB_USER..countries
+UNION ALL SELECT 'TIMES', COUNT(*) FROM &&LAB_USER..times
+UNION ALL SELECT 'CHANNELS', COUNT(*) FROM &&LAB_USER..channels
+UNION ALL SELECT 'PROMOTIONS', COUNT(*) FROM &&LAB_USER..promotions
 UNION ALL SELECT 'SUPPLEMENTARY_DEMOGRAPHICS', COUNT(*)
-  FROM supplementary_demographics;
+  FROM &&LAB_USER..supplementary_demographics;
+
+WHENEVER SQLERROR CONTINUE NONE
 ```
 
 `SUPPLEMENTARY_DEMOGRAPHICS.CUST_ID`와 `CUSTOMERS.CUST_ID`는 논리적으로 연결됩니다. 원본 SH 정의와 동일하게 이 관계에는 별도 외래키를 추가하지 않습니다.
 
-## 3. lab00: Annotation 등록
+## 3. 실습 계정별 Annotation 등록
 
 Annotation에 테이블·컬럼의 업무 의미와 조인 관계를 설명하여 **자연어 질문의 의도에 맞는 SQL을 생성하도록 보완**합니다. 아래의 “야구용품”, “고가 상품”, “연도”, “국가”, “매출액” 정의는 예제 질문에서 사용할 실습 규칙입니다.
 
@@ -218,7 +236,7 @@ Annotation에 테이블·컬럼의 업무 의미와 조인 관계를 설명하�
 
 `AI_DESCRIPTION`과 `AI_MEANING`은 이 실습에서 정한 Annotation 이름입니다. 테이블에는 업무 역할·관계 설명을, 주요 컬럼에는 용어와 계산 기준을 등록합니다. Annotation은 데이터를 변경하거나 SQL 조건을 강제하는 기능이 아니라 LLM에 제공할 메타데이터입니다.
 
-아래 구문은 최초 한 번 실행합니다. 동일한 대상에 같은 이름의 Annotation이 이미 있으면 `ADD` 대신 `REPLACE`로 값을 수정합니다.
+데이터를 준비한 본인의 실습 계정에 접속한 상태에서 아래 구문을 최초 한 번 실행합니다. Annotation은 현재 접속한 계정 소유의 테이블에 등록됩니다. 동일한 대상에 같은 이름의 Annotation이 이미 있으면 `ADD` 대신 `REPLACE`로 값을 수정합니다.
 
 ### 3.1 테이블별 역할과 관계
 
@@ -313,7 +331,7 @@ ALTER TABLE countries MODIFY country_name ANNOTATIONS (
 
 ## 4. Annotation 등록 확인
 
-`lab00` 소유의 Annotation을 확인합니다. `COLUMN_NAME`이 NULL이면 테이블 수준, 값이 있으면 해당 컬럼 수준의 Annotation입니다.
+현재 접속한 실습 계정 소유의 Annotation을 확인합니다. `COLUMN_NAME`이 NULL이면 테이블 수준, 값이 있으면 해당 컬럼 수준의 Annotation입니다.
 
 ```sql
 SELECT object_name, column_name, annotation_name, annotation_value
@@ -330,3 +348,73 @@ ORDER BY object_name, column_name NULLS FIRST, annotation_name;
 등록 후 [SELECT AI 예제의 실행 전 확인](SelectAiExample.md#실행-전-확인)으로 이동합니다. Part 1과 Part 2에서 동일한 질문을 사용하고, `annotations=false`와 `annotations=true` 프로파일의 결과를 비교합니다.
 
 참고: [Oracle Annotation 구문](https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/annotations_clause.html), [Annotation 조회 뷰](https://docs.oracle.com/en/database/oracle/oracle-database/26/refrn/ALL_ANNOTATIONS_USAGE.html), [Select AI의 Annotation 활용](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/generate-and-improve-sql-queries.html)
+
+## 5. 실습 데이터·테이블 클린징
+
+실습을 마친 뒤 본인 계정의 데이터를 정리할 때 사용합니다. 먼저 대상 계정을 확인한 후 **데이터만 삭제**하거나 **테이블을 삭제**하는 작업 중 필요한 하나를 선택합니다. 대상은 실습 계정에 복사한 9개 테이블이며, 원본 SH 데이터는 유지합니다.
+
+### 5.1 대상 계정 확인
+
+정리할 실습 계정으로 대상 PDB에 접속한 뒤 실행합니다. 입력 계정이 `lab00`~`lab19` 범위를 벗어나거나 접속 계정과 다르면 SQL*Plus 또는 SQLcl을 종료하여 후속 삭제를 중단합니다.
+
+```sql
+SET DEFINE ON
+ACCEPT LAB_USER CHAR DEFAULT 'lab00' PROMPT '정리할 실습 계정(lab00~lab19, 기본 lab00): '
+DEFINE LAB_USER
+
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
+BEGIN
+  IF NOT REGEXP_LIKE(UPPER('&&LAB_USER'), '^LAB(0[0-9]|1[0-9])$') THEN
+    RAISE_APPLICATION_ERROR(-20001, '실습 계정은 lab00~lab19 중 하나를 입력하십시오.');
+  END IF;
+  IF USER <> UPPER('&&LAB_USER') THEN
+    RAISE_APPLICATION_ERROR(-20002, '정리할 실습 계정으로 접속한 후 실행하십시오.');
+  END IF;
+END;
+/
+
+SELECT USER AS cleanup_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_pdb
+FROM dual;
+```
+
+### 5.2 데이터만 삭제
+
+테이블 구조, 기본키·외래키와 Annotation을 유지하고 모든 행을 삭제합니다. 외래키 관계에 따라 자식 테이블부터 삭제합니다. `COMMIT`으로 삭제를 확정합니다.
+
+```sql
+DELETE FROM &&LAB_USER..sales;
+DELETE FROM &&LAB_USER..costs;
+DELETE FROM &&LAB_USER..supplementary_demographics;
+DELETE FROM &&LAB_USER..customers;
+DELETE FROM &&LAB_USER..countries;
+DELETE FROM &&LAB_USER..products;
+DELETE FROM &&LAB_USER..times;
+DELETE FROM &&LAB_USER..channels;
+DELETE FROM &&LAB_USER..promotions;
+
+COMMIT;
+WHENEVER SQLERROR CONTINUE NONE
+```
+
+데이터 삭제 후 다시 실습하려면 테이블 생성·키 생성은 반복하지 않고, 각 테이블에 `INSERT INTO 실습계정.테이블 SELECT * FROM SH.테이블` 방식으로 부모 테이블부터 데이터를 적재합니다.
+
+### 5.3 테이블 삭제
+
+테이블과 해당 테이블의 데이터·제약조건·Annotation을 함께 제거합니다. 자식 테이블부터 삭제하며, DDL은 자동 커밋됩니다. 다시 실습하려면 이 문서의 데이터 준비와 Annotation 등록을 실행합니다.
+
+```sql
+DROP TABLE &&LAB_USER..sales;
+DROP TABLE &&LAB_USER..costs;
+DROP TABLE &&LAB_USER..supplementary_demographics;
+DROP TABLE &&LAB_USER..customers;
+DROP TABLE &&LAB_USER..countries;
+DROP TABLE &&LAB_USER..products;
+DROP TABLE &&LAB_USER..times;
+DROP TABLE &&LAB_USER..channels;
+DROP TABLE &&LAB_USER..promotions;
+
+WHENEVER SQLERROR CONTINUE NONE
+```
+
+실습 사용자, 권한·ACL, Wallet과 Select AI 프로파일은 이 클린징 작업의 대상에 포함하지 않습니다.
