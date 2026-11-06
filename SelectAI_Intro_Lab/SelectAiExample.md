@@ -6,20 +6,22 @@
 
 | 항목 | 내용 |
 |---|---|
-| 실습 데이터 | Oracle 샘플 `SH`(Sales History) 스키마의 `PRODUCTS` 테이블 |
+| 실습 데이터 | Oracle 샘플 `SH`(Sales History) 스키마의 전체 9개 테이블을 `LAB00`에 복사한 데이터 |
 | 실습 계정 | `lab00` |
 | 비교 방식 | 동일한 데이터와 자연어 질문을 사용하여 Annotation 적용 전후 비교 |
 | 확인 항목 | 테이블·컬럼 선택, 조인 관계, 조건과 집계의 정확성 |
 
 예제 스크립트는 이 문서의 SQL 코드 블록에 직접 작성합니다.
 
-## 실습 데이터: SH.PRODUCTS
+## 실습 데이터: SH 스키마
 
 `SH.PRODUCTS`는 Oracle의 판매 이력 샘플 스키마에서 **상품 기준정보**를 관리하는 테이블입니다. 상품별로 한 행을 저장하며, 기본키는 `PROD_ID`입니다. 상품명·설명, 대분류·소분류, 가격, 공급자와 상태 등의 정보를 포함합니다.
 
+실습에서는 `PRODUCTS` 단일 테이블 질문과 `SALES`, `TIMES`, `CUSTOMERS`, `COUNTRIES`를 조인하는 질문을 함께 사용합니다. 두 프로파일의 `object_list`에는 `LAB00`에 복사한 SH의 전체 9개 테이블을 명시합니다.
+
 ### 테이블 관계 구조도
 
-기본 실습 대상은 `PRODUCTS`입니다. 다음은 관계 이해를 위해 판매·원가·고객 등 SH의 주요 테이블과 연결 키를 함께 표시한 구조도입니다. 각 테이블에는 주요 컬럼만 표시했습니다.
+다음은 SH의 전체 9개 테이블과 연결 키를 표시한 구조도입니다. 각 테이블에는 주요 컬럼만 표시했습니다.
 
 ```mermaid
 erDiagram
@@ -71,6 +73,11 @@ erDiagram
         NUMBER PROMO_ID PK
         VARCHAR2 PROMO_NAME
     }
+    SUPPLEMENTARY_DEMOGRAPHICS {
+        NUMBER CUST_ID PK
+        VARCHAR2 EDUCATION
+        VARCHAR2 OCCUPATION
+    }
 
     PRODUCTS ||--o{ SALES : PROD_ID
     PRODUCTS ||--o{ COSTS : PROD_ID
@@ -82,9 +89,12 @@ erDiagram
     CHANNELS ||--o{ COSTS : CHANNEL_ID
     PROMOTIONS ||--o{ SALES : PROMO_ID
     PROMOTIONS ||--o{ COSTS : PROMO_ID
+    CUSTOMERS ||..o| SUPPLEMENTARY_DEMOGRAPHICS : CUST_ID
 ```
 
 `PK`는 기본키, `FK`는 외래키입니다. 관계선은 부모 테이블의 한 행에 자식 테이블의 여러 행이 연결될 수 있음을 나타냅니다.
+
+`SUPPLEMENTARY_DEMOGRAPHICS`는 고객의 학력·직업 등 부가정보입니다. 고객과의 점선은 `CUST_ID`를 통한 논리적 연결이며, 원본 SH 정의에는 이 관계의 외래키가 없습니다.
 
 `SALES`는 판매금액·수량, `COSTS`는 단위 원가·가격을 관리합니다. 상품·일자·채널·프로모션을 기준으로 연결되며, `SALES`는 고객 정보와도 연결됩니다. 고객의 국가는 `CUSTOMERS`를 통해 확인합니다.
 
@@ -112,15 +122,23 @@ erDiagram
 
 ## 질문 예제
 
-첫 번째 질문은 기본 비교용이며, 나머지는 업무 용어의 정의가 SQL에 반영되는지 확인하는 질문입니다. 아래 업무 정의는 **이 실습에서 정한 규칙**입니다.
+단일 테이블 질문 2개와 조인 질문 2개로 구성합니다. 아래 업무 정의는 **이 실습에서 정한 규칙**입니다.
+
+### 단일 테이블 질문
 
 | 번호 | 자연어 질문 | Part 2에서 Annotation으로 제공할 업무 정의 |
 |---|---|---|
 | 1 | 상품 대분류별 상품 수를 많은 순서로 보여줘. | 대분류는 `PROD_CATEGORY`입니다. 기본 비교용 질문입니다. |
 | 2 | 야구용품 중 고가 상품의 상품명과 정가를 보여줘. | 야구용품은 `PROD_CATEGORY = 'Baseball'`, 고가 상품은 `PROD_LIST_PRICE >= 100`입니다. |
-| 3 | 가격 조정 여지가 있는 상품을 보여줘. | 가격 조정 여지가 있는 상품은 `PROD_LIST_PRICE > PROD_MIN_PRICE`인 상품입니다. |
-| 4 | 가격 인하 가능액이 큰 상위 5개 상품을 보여줘. | 가격 인하 가능액은 `PROD_LIST_PRICE - PROD_MIN_PRICE`입니다. 내림차순으로 5개를 선택하며, 동률이면 `PROD_ID` 오름차순을 적용합니다. |
-| 5 | 소분류별 가격 인하 가능률의 평균을 보여줘. | 소분류는 `PROD_SUBCATEGORY`, 가격 인하 가능률은 `(PROD_LIST_PRICE - PROD_MIN_PRICE) / PROD_LIST_PRICE * 100`입니다. 정가가 0인 상품은 계산에서 제외하고, 상품별 비율의 평균을 구합니다. |
+
+사용 테이블: `PRODUCTS`.
+
+### 조인 질문
+
+| 번호 | 자연어 질문 | 사용 테이블과 Part 2에서 Annotation으로 제공할 업무 정의 |
+|---|---|---|
+| 3 | 연도별 야구용품 매출액을 보여줘. | `PRODUCTS`·`SALES`·`TIMES`를 사용합니다. 야구용품은 `PROD_CATEGORY = 'Baseball'`, 연도는 `TIMES.CALENDAR_YEAR`, 매출액은 `SUM(SALES.AMOUNT_SOLD)`입니다. `PROD_ID`와 `TIME_ID`로 조인합니다. |
+| 4 | 국가별 고가 야구용품 매출액을 보여줘. | `PRODUCTS`·`SALES`·`CUSTOMERS`·`COUNTRIES`를 사용합니다. 야구용품은 `PROD_CATEGORY = 'Baseball'`, 고가 상품은 `PROD_LIST_PRICE >= 100`, 국가는 고객의 `COUNTRY_NAME`, 매출액은 `SUM(SALES.AMOUNT_SOLD)`입니다. `PROD_ID`, `CUST_ID`, `COUNTRY_ID`로 조인합니다. |
 
 두 파트에서는 **표의 자연어 질문을 동일하게 사용**합니다. Part 1에서는 업무 정의를 프롬프트에 추가하지 않고, Part 2에서는 업무 정의를 Annotation으로 제공합니다. SQL이 실행되는지뿐 아니라 **정해진 업무 규칙에 맞는 조건·계산식·집계를 생성하는지**를 비교합니다.
 
@@ -145,15 +163,23 @@ ORDER BY privilege;
 
 ### 데이터 확인
 
-실습 대상은 `SH.PRODUCTS`에서 복사한 `LAB00.PRODUCTS`입니다. 대상 테이블의 행 수와 주요 컬럼 값을 확인합니다.
+실습 대상은 SH의 전체 9개 테이블을 `LAB00`에 복사한 데이터입니다. 모든 테이블에 데이터가 준비되었는지 확인하고, 상품의 주요 컬럼 값도 조회합니다.
 
 ```sql
 SELECT USER AS current_user,
        SYS_CONTEXT('USERENV', 'CON_NAME') AS current_pdb
 FROM dual;
 
-SELECT COUNT(*) AS product_count
-FROM products;
+SELECT 'PRODUCTS' AS table_name, COUNT(*) AS row_count FROM products
+UNION ALL SELECT 'SALES', COUNT(*) FROM sales
+UNION ALL SELECT 'COSTS', COUNT(*) FROM costs
+UNION ALL SELECT 'CUSTOMERS', COUNT(*) FROM customers
+UNION ALL SELECT 'COUNTRIES', COUNT(*) FROM countries
+UNION ALL SELECT 'TIMES', COUNT(*) FROM times
+UNION ALL SELECT 'CHANNELS', COUNT(*) FROM channels
+UNION ALL SELECT 'PROMOTIONS', COUNT(*) FROM promotions
+UNION ALL SELECT 'SUPPLEMENTARY_DEMOGRAPHICS', COUNT(*)
+  FROM supplementary_demographics;
 
 SELECT prod_id, prod_name, prod_category, prod_subcategory,
        prod_list_price, prod_min_price
@@ -183,7 +209,15 @@ BEGIN
       "provider_endpoint": "&&OLLAMA_ENDPOINT",
       "model": "&&OLLAMA_MODEL",
       "object_list": [
-        {"owner": "LAB00", "name": "PRODUCTS"}
+        {"owner": "LAB00", "name": "PRODUCTS"},
+        {"owner": "LAB00", "name": "SALES"},
+        {"owner": "LAB00", "name": "COSTS"},
+        {"owner": "LAB00", "name": "CUSTOMERS"},
+        {"owner": "LAB00", "name": "COUNTRIES"},
+        {"owner": "LAB00", "name": "TIMES"},
+        {"owner": "LAB00", "name": "CHANNELS"},
+        {"owner": "LAB00", "name": "PROMOTIONS"},
+        {"owner": "LAB00", "name": "SUPPLEMENTARY_DEMOGRAPHICS"}
       ],
       "comments": false,
       "annotations": false,
@@ -195,7 +229,7 @@ BEGIN
       "seed": 42
     }',
     status      => 'enabled',
-    description => 'Part 1: Annotation을 사용하지 않는 PRODUCTS 실습'
+    description => 'Part 1: Annotation을 사용하지 않는 SH 단일 테이블 및 조인 실습'
   );
 END;
 /
@@ -212,7 +246,7 @@ FROM dual;
 
 ### 프로파일 생성과 적용: SELECTAI_PRODUCTS_ANN
 
-Part 2 프로파일은 `annotations=true`로 설정합니다. 아래 프로파일 생성은 Annotation 자체를 추가하지 않으므로, 업무 정의에 대한 Annotation을 `LAB00.PRODUCTS`에 추가한 상태에서 질문을 실행합니다. 엔드포인트와 모델은 Part 1과 동일하게 지정합니다.
+Part 2 프로파일은 `annotations=true`로 설정합니다. 아래 프로파일 생성은 Annotation 자체를 추가하지 않으므로, 업무 정의와 조인 관계에 대한 Annotation을 `LAB00`의 해당 테이블·컬럼에 추가한 상태에서 질문을 실행합니다. 엔드포인트와 모델은 Part 1과 동일하게 지정합니다.
 
 ```sql
 DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
@@ -225,7 +259,15 @@ BEGIN
       "provider_endpoint": "&&OLLAMA_ENDPOINT",
       "model": "&&OLLAMA_MODEL",
       "object_list": [
-        {"owner": "LAB00", "name": "PRODUCTS"}
+        {"owner": "LAB00", "name": "PRODUCTS"},
+        {"owner": "LAB00", "name": "SALES"},
+        {"owner": "LAB00", "name": "COSTS"},
+        {"owner": "LAB00", "name": "CUSTOMERS"},
+        {"owner": "LAB00", "name": "COUNTRIES"},
+        {"owner": "LAB00", "name": "TIMES"},
+        {"owner": "LAB00", "name": "CHANNELS"},
+        {"owner": "LAB00", "name": "PROMOTIONS"},
+        {"owner": "LAB00", "name": "SUPPLEMENTARY_DEMOGRAPHICS"}
       ],
       "comments": false,
       "annotations": true,
@@ -237,7 +279,7 @@ BEGIN
       "seed": 42
     }',
     status      => 'enabled',
-    description => 'Part 2: Annotation을 사용하는 PRODUCTS 실습'
+    description => 'Part 2: Annotation을 사용하는 SH 단일 테이블 및 조인 실습'
   );
 END;
 /
