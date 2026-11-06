@@ -164,7 +164,7 @@ END;
 | 대화 | `conversation_length` | 현재 질문에 포함할 최근 질문·응답 이력의 길이입니다. 입력은 **1~999의 정수**입니다. 요청·대화·프로파일 어디에도 지정하지 않으면 기본값 `10`이 적용됩니다. |
 | RAG | `embedding_model`, `vector_index_name` | 임베딩 모델과 사용할 벡터 인덱스를 지정합니다. |
 
-이 외에 제공자별로 `region`, `oci_compartment_id`, `oci_endpoint_id`, `oci_apiformat`, `azure_resource_name`, `azure_deployment_name` 등을 사용합니다. 지원 속성과 필수 항목은 DB 버전·서비스·AI 제공자에 따라 확인합니다. Annotation의 활용 방법은 뒤에서 다룹니다. [Oracle Profile Attributes 공식 문서](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/dbms-cloud-ai-package.html)
+Public Cloud Service 별로 `region`, `oci_compartment_id`, `oci_endpoint_id`, `oci_apiformat`, `azure_resource_name`, `azure_deployment_name` 등을 사용합니다. 지원 속성과 필수 항목은 DB 버전·서비스·AI 제공자에 따라 확인합니다. Annotation의 활용 방법은 뒤에서 다룹니다. [Oracle Profile Attributes 공식 문서](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/dbms-cloud-ai-package.html)
 
 `temperature`와 `max_tokens`에는 모든 제공자에 공통인 고정 상한이 없습니다. 실제 사용 범위는 연결한 제공자·모델의 API 제한을 따릅니다.
 
