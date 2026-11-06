@@ -240,6 +240,40 @@ SELECT DBMS_CLOUD_AI.GET_PROFILE() AS current_profile
 FROM dual;
 ```
 
+### SELECT AI 실행
+
+#### runsql: SQL 실행 결과 조회
+
+자연어 질문으로 생성한 SQL을 실행하여 조회 결과를 확인합니다.
+
+```sql
+EXEC DBMS_CLOUD_AI.SET_PROFILE('SELECTAI_PRODUCTS_NOANN');
+
+-- 단일 테이블 질문
+SELECT AI runsql 상품 대분류별 상품 수를 많은 순서로 보여줘;
+SELECT AI runsql 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
+
+-- 조인 질문
+SELECT AI runsql 연도별 야구용품 매출액을 보여줘;
+SELECT AI runsql 국가별 고가 야구용품 매출액을 보여줘;
+```
+
+#### narrate: 조회 결과의 자연어 설명
+
+SQL 조회 결과를 LLM에 전달하여 자연어 설명을 받습니다.
+
+```sql
+EXEC DBMS_CLOUD_AI.SET_PROFILE('SELECTAI_PRODUCTS_NOANN');
+
+-- 단일 테이블 질문
+SELECT AI narrate 상품 대분류별 상품 수를 많은 순서로 보여줘;
+SELECT AI narrate 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
+
+-- 조인 질문
+SELECT AI narrate 연도별 야구용품 매출액을 보여줘;
+SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
+```
+
 ## Part 2. Annotation을 사용하는 예제
 
 테이블·컬럼에 업무 정의를 담은 Annotation을 추가하고, `annotations=true`인 별도 프로파일을 사용합니다. Part 1과 동일한 질문을 실행하여 **업무 의미를 보완한 Annotation이 SQL 작성의 정확도 향상에 어떤 도움을 주는지** 확인합니다.
@@ -288,6 +322,40 @@ EXEC DBMS_CLOUD_AI.SET_PROFILE('SELECTAI_PRODUCTS_ANN');
 
 SELECT DBMS_CLOUD_AI.GET_PROFILE() AS current_profile
 FROM dual;
+```
+
+### SELECT AI 실행
+
+#### runsql: SQL 실행 결과 조회
+
+자연어 질문으로 생성한 SQL을 실행하여 조회 결과를 확인합니다.
+
+```sql
+EXEC DBMS_CLOUD_AI.SET_PROFILE('SELECTAI_PRODUCTS_ANN');
+
+-- 단일 테이블 질문
+SELECT AI runsql 상품 대분류별 상품 수를 많은 순서로 보여줘;
+SELECT AI runsql 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
+
+-- 조인 질문
+SELECT AI runsql 연도별 야구용품 매출액을 보여줘;
+SELECT AI runsql 국가별 고가 야구용품 매출액을 보여줘;
+```
+
+#### narrate: 조회 결과의 자연어 설명
+
+SQL 조회 결과를 LLM에 전달하여 자연어 설명을 받습니다.
+
+```sql
+EXEC DBMS_CLOUD_AI.SET_PROFILE('SELECTAI_PRODUCTS_ANN');
+
+-- 단일 테이블 질문
+SELECT AI narrate 상품 대분류별 상품 수를 많은 순서로 보여줘;
+SELECT AI narrate 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
+
+-- 조인 질문
+SELECT AI narrate 연도별 야구용품 매출액을 보여줘;
+SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
 ```
 
 프로파일 이름과 `annotations` 값을 제외한 LLM·대상 객체·처리 옵션은 두 파트에서 동일하게 유지합니다. `comments=false`와 `conversation=false`도 유지하여 Comment와 이전 대화의 영향을 줄입니다. `comments`와 `annotations`는 각각 별도 옵션입니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/generate-and-improve-sql-queries.html)
