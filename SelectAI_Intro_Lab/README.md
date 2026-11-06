@@ -11,7 +11,16 @@
 다음은 NL2SQL을 중심으로 표현한 개념 구조입니다.
 
 ```mermaid
-flowchart LR
+---
+config:
+  themeVariables:
+    fontSize: 22px
+  flowchart:
+    nodeSpacing: 35
+    rankSpacing: 40
+    padding: 20
+---
+flowchart TB
     U["사용자 / 앱"]
     L["LLM"]
 
@@ -44,6 +53,22 @@ flowchart LR
 ## SELECT AI 처리 흐름
 
 ```mermaid
+---
+config:
+  sequence:
+    actorFontSize: 13
+    messageFontSize: 13
+    noteFontSize: 12
+    actorMargin: 30
+    width: 120
+    height: 40
+    diagramMarginX: 10
+    diagramMarginY: 10
+    boxMargin: 6
+    noteMargin: 6
+    messageMargin: 24
+    mirrorActors: false
+---
 sequenceDiagram
     participant U as 사용자 / 앱
     participant S as Select AI
