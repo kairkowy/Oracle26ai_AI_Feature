@@ -144,7 +144,7 @@ erDiagram
 
 ## 실행 전 확인
 
-[SELECT AI 실습환경 구성](SelectAiCongigure.md)의 관리자 설정과 데이터 준비를 먼저 완료합니다. 이후 스크립트는 SQL*Plus 또는 SQLcl에서 **대상 PDB에 `lab00`으로 접속한 세션**에서 실행합니다.
+[SELECT AI 실습환경 구성](SelectAiConfigure.md)의 관리자 설정과 데이터 준비를 먼저 완료합니다. 이후 스크립트는 SQL*Plus 또는 SQLcl에서 **대상 PDB에 `lab00`으로 접속한 세션**에서 실행합니다.
 
 ### ACL 확인
 
