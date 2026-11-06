@@ -88,6 +88,25 @@ SELECT AI actions 자연어 질문;
 - **자연어 질문**: 조회하거나 분석할 내용을 자연어로 입력합니다.
 - **;**: SQL 문장의 끝을 나타냅니다.
 
+### actions 종류
+
+`actions` 자리에는 다음 중 수행할 Action 하나를 입력합니다.
+
+| Action | 간략한 설명 |
+|---|---|
+| `runsql` | SQL을 생성·실행하고 조회 결과를 반환합니다. 기본 Action입니다. |
+| `showsql` | 생성된 SQL을 실행하지 않고 보여줍니다. |
+| `explainsql` | 생성된 SQL의 동작을 자연어로 설명합니다. |
+| `narrate` | 조회 결과를 자연어로 설명하거나, RAG 검색 내용을 바탕으로 답변합니다. |
+| `chat` | LLM과 자연어로 대화합니다. |
+| `showprompt` | NL2SQL 또는 RAG 처리 시 LLM에 전달할 프롬프트를 보여줍니다. |
+| `summarize` | 입력한 텍스트를 요약합니다. |
+| `feedback` | SQL 생성 정확도 개선을 위한 자연어 피드백을 제공합니다. |
+| `translate` | OCI 번역 서비스를 이용해 지정한 언어로 번역합니다. |
+| `agent` | 구성된 AI 에이전트 팀을 호출해 요청을 처리합니다. |
+
+Action별 지원 여부와 필요한 프로파일 설정은 사용 환경에 따라 달라집니다. `feedback`은 Oracle AI Database 26ai에서 지원합니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
+
 참고: [Select AI 개요](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-about.html), [AI 프로파일](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/manage-ai-profiles.html), [메타데이터와 Annotation](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/data-and-metadata-concepts.html), [Action별 동작](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
 
 네트워크 접근 제어 참고: [DBMS_NETWORK_ACL_ADMIN](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_NETWORK_ACL_ADMIN.html)
