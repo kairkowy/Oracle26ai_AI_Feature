@@ -107,6 +107,64 @@ SELECT AI actions 자연어 질문;
 
 Action별 지원 여부와 필요한 프로파일 설정은 사용 환경에 따라 달라집니다. `feedback`은 Oracle AI Database 26ai에서 지원합니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
 
+## SELECT AI 프로파일
+
+**Profile(사용자지정)**은 Select AI가 사용할 LLM, 인증 정보 참조, 대상 객체와 처리 옵션을 모아 놓은 설정입니다. `DBMS_CLOUD_AI.CREATE_PROFILE`로 생성하고, `DBMS_CLOUD_AI.SET_PROFILE`로 현재 세션에 적용합니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/manage-ai-profiles.html)
+
+### 프로파일 구조
+
+프로파일은 **이름(`profile_name`), 설정(`attributes`), 상태(`status`), 설명(`description`)**으로 구성됩니다. 실제 처리 설정은 `attributes`에 JSON 형식으로 지정합니다.
+
+다음은 구조를 보여주는 예시로, `<...>`는 사용 환경에 맞는 값으로 변경합니다.
+
+```sql
+BEGIN
+  DBMS_CLOUD_AI.CREATE_PROFILE(
+    profile_name => 'SELECTAI_PROFILE',
+    attributes   => '{
+      "provider": "<AI 제공자>",
+      "credential_name": "<등록된 Credential 이름>",
+      "model": "<모델 이름>",
+      "object_list": [
+        {"owner": "<스키마 이름>", "name": "<테이블 또는 뷰 이름>"}
+      ],
+      "comments": true,
+      "annotations": true,
+      "constraints": true
+    }',
+    status       => 'ENABLED',
+    description  => 'Select AI 실습용 프로파일'
+  );
+END;
+/
+```
+
+`profile_name`은 프로파일 식별자이고, `attributes`는 LLM 연동과 SQL 생성 방식을 정합니다. `status`와 `description`은 선택 항목이며, 상태를 생략하면 기본으로 활성화됩니다. 생성된 프로파일의 활성화 상태와 현재 세션에서 사용할 프로파일 지정은 별개입니다.
+
+### 주요 attributes
+
+| 구분 | Attribute | 간략한 설명 |
+|---|---|---|
+| LLM 연동 | `provider` | 사용할 AI 제공자입니다. |
+| LLM 연동 | `model` | 사용할 모델 이름입니다. Azure는 배포 이름으로 모델을 지정합니다. |
+| LLM 연동 | `credential_name` | AI 제공자 인증에 사용할 등록된 Credential 이름입니다. |
+| LLM 연동 | `provider_endpoint` | AI 제공자의 API 엔드포인트입니다. |
+| 대상 객체 | `object_list` | 메타데이터를 활용할 객체 목록입니다. `owner`와 `name`으로 지정합니다. |
+| 대상 객체 | `object_list_mode` | 전체 객체의 메타데이터(`all`) 또는 질문과 관련된 객체의 메타데이터(`automated`)를 전달합니다. |
+| 대상 객체 | `enforce_object_list` | 생성 SQL이 `object_list`의 객체만 사용하도록 제한할지 지정합니다. DB 접근 권한을 부여하는 설정은 아닙니다. |
+| 메타데이터 | `comments` | 테이블·컬럼의 Comment를 프롬프트에 포함합니다. |
+| 메타데이터 | `annotations` | 테이블·컬럼의 Annotation을 포함합니다. 기본값은 `false`입니다. |
+| 메타데이터 | `constraints` | PK·FK 등 참조 무결성 제약조건을 포함합니다. 기본값은 `false`입니다. |
+| SQL 생성 | `case_sensitive_values` | 문자열 값 비교 시 대소문자를 구분하도록 LLM에 지시할지 설정합니다. |
+| 응답 생성 | `temperature` | 응답 생성의 무작위성을 조절합니다. 낮을수록 변동성이 줄어듭니다. |
+| 응답 생성 | `max_tokens` | 생성할 응답의 최대 토큰 수입니다. |
+| 응답 생성 | `seed` | 반복 요청의 결과 변동성을 줄이기 위한 시드입니다. 동일한 결과를 보장하지는 않습니다. |
+| 대화 | `conversation`, `conversation_length` | 대화 이력 사용 여부와 유지 길이를 설정합니다. |
+| 지침 | `role`, `additional_instructions` | 어시스턴트 역할과 공통 업무 규칙·추가 지침을 지정합니다. |
+| RAG | `embedding_model`, `vector_index_name` | 임베딩 모델과 사용할 벡터 인덱스를 지정합니다. |
+
+이 외에 제공자별로 `region`, `oci_compartment_id`, `oci_endpoint_id`, `oci_apiformat`, `azure_resource_name`, `azure_deployment_name` 등을 사용합니다. 지원 속성과 필수 항목은 DB 버전·서비스·AI 제공자에 따라 확인합니다. Annotation의 활용 방법은 뒤에서 다룹니다. [Oracle Profile Attributes 공식 문서](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/dbms-cloud-ai-package.html)
+
 참고: [Select AI 개요](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-about.html), [AI 프로파일](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/manage-ai-profiles.html), [메타데이터와 Annotation](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/data-and-metadata-concepts.html), [Action별 동작](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
 
 네트워크 접근 제어 참고: [DBMS_NETWORK_ACL_ADMIN](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_NETWORK_ACL_ADMIN.html)
