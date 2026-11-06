@@ -170,8 +170,6 @@ END;
 
 입력 범위·기본값 참고: [Oracle Profile Attributes 및 Conversation Attributes](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/dbms-cloud-ai-package.html), [`comments` 기본값 및 양의 정수 입력 기준: Oracle Select AI 공식 Java API 자료](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/saija/src-html/com/oracle/database/selectai/model/ProfileAttributes.Builder.html)
 
-Ollama의 Credential 생략 구성 참고: [Oracle Select AI와 프라이빗 Ollama 연동 가이드(PDF)](https://adwc4pm.objectstorage.us-ashburn-1.oci.customer-oci.com/n/adwc4pm/b/OML-Resources/o/SelectAI-Ollama-PrivateEndpoint.pdf#page=20)
-
 참고: [Select AI 개요](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-about.html), [AI 프로파일](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/manage-ai-profiles.html), [메타데이터와 Annotation](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/data-and-metadata-concepts.html), [Action별 동작](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
 
 네트워크 접근 제어 참고: [DBMS_NETWORK_ACL_ADMIN](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/DBMS_NETWORK_ACL_ADMIN.html)
