@@ -157,15 +157,18 @@ END;
 | 메타데이터 | `annotations` | 테이블·컬럼의 Annotation을 포함합니다. 기본값은 `false`입니다. |
 | 메타데이터 | `constraints` | PK·FK 등 참조 무결성 제약조건을 포함합니다. 기본값은 `false`입니다. |
 | SQL 생성 | `case_sensitive_values` | 문자열 값 비교 시 대소문자를 구분하도록 LLM에 지시할지 설정합니다. 기본값은 `false`이며, 대소문자를 구분하지 않도록 지시합니다. |
-| 응답 생성 | `temperature` | 응답 생성의 무작위성을 조절합니다. 낮을수록 변동성이 줄어듭니다. |
-| 응답 생성 | `max_tokens` | 생성할 응답의 최대 토큰 수입니다. |
-| 응답 생성 | `seed` | 반복 요청의 결과 변동성을 줄이기 위한 시드입니다. 동일한 결과를 보장하지는 않습니다. |
-| 대화 | `conversation`, `conversation_length` | 대화 이력 사용 여부와 유지 길이를 설정합니다. |
+| 응답 생성 | `temperature` | 응답 생성의 무작위성을 조절합니다. 입력은 **0 이상의 실수**이며, 허용 상한과 지원 여부는 제공자·모델에 따라 다릅니다. 낮을수록 변동성이 줄어듭니다. |
+| 응답 생성 | `max_tokens` | 생성할 응답의 최대 토큰 수입니다. 입력은 **1 이상의 정수**이며, 상한은 제공자·모델의 출력 및 컨텍스트 한도에 따라 다릅니다. Oracle 문서상 기본값은 `1024`입니다. |
+| 응답 생성 | `seed` | 반복 요청의 결과 변동성을 줄이기 위한 시드입니다. 입력은 **부호 있는 64비트 정수(-9223372036854775808 ~ 9223372036854775807)**입니다. 실제 제공자·모델의 지원 범위도 확인하며, 동일한 결과를 보장하지는 않습니다. |
+| 대화 | `conversation` | 대화 이력 사용 여부입니다. 입력은 `true` 또는 `false`이며, **기본값은 `false`(비활성화)**입니다. |
+| 대화 | `conversation_length` | 현재 질문에 포함할 최근 질문·응답 이력의 길이입니다. 입력은 **1~999의 정수**입니다. 요청·대화·프로파일 어디에도 지정하지 않으면 기본값 `10`이 적용됩니다. |
 | RAG | `embedding_model`, `vector_index_name` | 임베딩 모델과 사용할 벡터 인덱스를 지정합니다. |
 
 이 외에 제공자별로 `region`, `oci_compartment_id`, `oci_endpoint_id`, `oci_apiformat`, `azure_resource_name`, `azure_deployment_name` 등을 사용합니다. 지원 속성과 필수 항목은 DB 버전·서비스·AI 제공자에 따라 확인합니다. Annotation의 활용 방법은 뒤에서 다룹니다. [Oracle Profile Attributes 공식 문서](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/dbms-cloud-ai-package.html)
 
-`comments` 기본값 참고: [Oracle Select AI 공식 Java API 자료](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/saija/src-html/com/oracle/database/selectai/model/ProfileAttributes.Builder.html)
+`temperature`와 `max_tokens`에는 모든 제공자에 공통인 고정 상한이 없습니다. 실제 사용 범위는 연결한 제공자·모델의 API 제한을 따릅니다.
+
+입력 범위·기본값 참고: [Oracle Profile Attributes 및 Conversation Attributes](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/dbms-cloud-ai-package.html), [`comments` 기본값 및 양의 정수 입력 기준: Oracle Select AI 공식 Java API 자료](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/saija/src-html/com/oracle/database/selectai/model/ProfileAttributes.Builder.html)
 
 Ollama의 Credential 생략 구성 참고: [Oracle Select AI와 프라이빗 Ollama 연동 가이드(PDF)](https://adwc4pm.objectstorage.us-ashburn-1.oci.customer-oci.com/n/adwc4pm/b/OML-Resources/o/SelectAI-Ollama-PrivateEndpoint.pdf#page=20)
 
