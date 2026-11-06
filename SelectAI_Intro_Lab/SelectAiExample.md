@@ -124,6 +124,134 @@ erDiagram
 
 두 파트에서는 **표의 자연어 질문을 동일하게 사용**합니다. Part 1에서는 업무 정의를 프롬프트에 추가하지 않고, Part 2에서는 업무 정의를 Annotation으로 제공합니다. SQL이 실행되는지뿐 아니라 **정해진 업무 규칙에 맞는 조건·계산식·집계를 생성하는지**를 비교합니다.
 
+## 공통 준비: ACL 등록과 SELECT AI 프로파일
+
+Part 1과 Part 2는 동일한 Ollama 서비스와 프로파일을 사용합니다. `DBMS_CLOUD`·`DBMS_CLOUD_AI` 패키지 설치와 Wallet 구성은 [온프레미스 Select AI 구성 문서](../SelectAI/SelectAI_Config_Run.md)를 참고하여 먼저 완료합니다. `lab00` 계정과 `SH.PRODUCTS` 데이터도 대상 PDB에 준비되어 있어야 합니다.
+
+아래 SQL은 SQL*Plus 또는 SQLcl 기준입니다. PDB 이름, 테이블스페이스, Ollama 호스트·엔드포인트·모델은 실제 환경에 맞게 변경합니다. DB 서버에서 Ollama 호스트로 접속할 수 있어야 합니다.
+
+| 설정 | 예시 값 | 설명 |
+|---|---|---|
+| 대상 PDB | `orclpdb1` | `lab00`과 `SH.PRODUCTS`가 있는 PDB |
+| 테이블스페이스 | `USERS` | `lab00`의 실습 테이블을 저장할 테이블스페이스 |
+| Ollama 호스트 | `service-ollama` | ACL에는 프로토콜·포트·경로를 제외한 호스트만 지정 |
+| Ollama 엔드포인트 | `http://service-ollama/v1` | 참조 문서의 프록시 구성 기준 주소 |
+| 모델 | `gemma2:9b` | 참조 문서의 DB 쿼리 예시 모델. 실제 Ollama에 설치된 모델명으로 변경 |
+| 프로파일 | `SELECTAI_PRODUCTS` | 두 파트에서 공통으로 사용할 프로파일 |
+
+### 1. 관리자: 실행 권한과 ACL 등록
+
+SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. ACL은 예시의 Ollama 호스트에 대해 등록합니다.
+
+```sql
+DEFINE LAB_PDB = orclpdb1
+DEFINE LAB_TABLESPACE = USERS
+DEFINE OLLAMA_HOST = service-ollama
+
+-- CDB: 참조 문서의 Cloud 패키지 서비스 계정 ACL
+ALTER SESSION SET CONTAINER = CDB$ROOT;
+
+BEGIN
+  DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
+    host => '&&OLLAMA_HOST',
+    ace  => xs$ace_type(
+      privilege_list => xs$name_list('connect', 'resolve'),
+      principal_name => 'C##CLOUD$SERVICE',
+      principal_type => xs_acl.ptype_db
+    )
+  );
+END;
+/
+
+-- PDB: lab00 실행 권한과 데이터 접근 권한
+ALTER SESSION SET CONTAINER = &&LAB_PDB;
+
+GRANT CREATE SESSION, CREATE TABLE TO lab00;
+GRANT EXECUTE ON DBMS_CLOUD TO lab00;
+GRANT EXECUTE ON DBMS_CLOUD_AI TO lab00;
+GRANT SELECT ON SH.PRODUCTS TO lab00;
+
+ALTER USER lab00 QUOTA 20M ON &&LAB_TABLESPACE;
+
+-- PDB: 실습 계정에서 Ollama 서비스에 접근할 수 있도록 등록
+BEGIN
+  DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
+    host => '&&OLLAMA_HOST',
+    ace  => xs$ace_type(
+      privilege_list => xs$name_list('http', 'connect', 'resolve'),
+      principal_name => 'LAB00',
+      principal_type => xs_acl.ptype_db
+    )
+  );
+END;
+/
+
+-- 대상 PDB의 ACL 등록 확인
+SELECT host, principal, privilege, grant_type
+FROM   dba_host_aces
+WHERE  host = '&&OLLAMA_HOST'
+AND    principal = 'LAB00'
+ORDER BY privilege;
+```
+
+### 2. lab00: 실습 데이터 준비
+
+이후 스크립트는 **대상 PDB에 `lab00`으로 접속한 세션**에서 실행합니다. Annotation을 직접 추가할 수 있도록 원본 데이터를 `LAB00.PRODUCTS`로 복사합니다. 원본 `SH.PRODUCTS`는 수정하지 않습니다. 이 단계는 최초 준비 시 한 번 실행합니다.
+
+```sql
+DEFINE LAB_TABLESPACE = USERS
+
+CREATE TABLE products TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.products;
+
+ALTER TABLE products
+  ADD CONSTRAINT lab00_products_pk PRIMARY KEY (prod_id);
+
+SELECT COUNT(*) AS product_count FROM products;
+```
+
+### 3. lab00: 공통 프로파일 생성과 적용
+
+Ollama 엔드포인트와 모델명을 실제 환경에 맞게 수정합니다. 아래 예시는 **인증 없는 Ollama 프록시 구성**이므로 `credential_name`을 지정하지 않습니다. `provider_endpoint`의 `/v1` 경로는 참조 문서의 23.26.2 설정을 따르며, 설치 버전과 프록시 구성이 다르면 그에 맞는 경로를 사용합니다.
+
+```sql
+DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
+DEFINE OLLAMA_MODEL = gemma2:9b
+
+BEGIN
+  DBMS_CLOUD_AI.CREATE_PROFILE(
+    profile_name => 'SELECTAI_PRODUCTS',
+    attributes   => '{
+      "provider_endpoint": "&&OLLAMA_ENDPOINT",
+      "model": "&&OLLAMA_MODEL",
+      "object_list": [
+        {"owner": "LAB00", "name": "PRODUCTS"}
+      ],
+      "comments": false,
+      "annotations": false,
+      "constraints": true,
+      "enforce_object_list": true,
+      "conversation": false,
+      "max_tokens": 1024,
+      "temperature": 0,
+      "seed": 42
+    }',
+    status      => 'enabled',
+    description => 'Ollama를 이용한 PRODUCTS Annotation 비교 실습'
+  );
+END;
+/
+
+EXEC DBMS_CLOUD_AI.SET_PROFILE('SELECTAI_PRODUCTS');
+
+SELECT DBMS_CLOUD_AI.GET_PROFILE() AS current_profile
+FROM dual;
+```
+
+동일 이름의 프로파일이 이미 있으면 생성 구문은 오류가 발생합니다. 이 경우 기존 설정을 확인하고 `DBMS_CLOUD_AI.SET_ATTRIBUTE`로 필요한 속성을 변경합니다. 새 DB 세션으로 접속할 때는 `SET_PROFILE`을 다시 실행합니다.
+
+공통 프로파일은 Part 1을 위해 `annotations=false`로 시작합니다. Part 2에서는 업무 정의를 담은 Annotation을 추가한 후 **같은 프로파일의 `annotations`만 `true`로 변경**하여 비교합니다. `comments=false`와 `conversation=false`는 두 파트에서 유지하여 Comment나 이전 대화에 업무 정의가 포함되는 영향을 줄입니다. `comments`와 `annotations`는 각각 별도 옵션입니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/generate-and-improve-sql-queries.html)
+
 ## Part 1. Annotation을 사용하지 않는 예제
 
 Annotation을 사용하지 않은 상태에서 자연어 질문으로 SQL을 생성·실행합니다. 생성된 SQL과 기대 결과를 비교하여 업무 의미가 충분히 반영되는지 확인합니다.
