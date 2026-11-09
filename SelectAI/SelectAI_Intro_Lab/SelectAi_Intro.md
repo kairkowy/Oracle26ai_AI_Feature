@@ -149,7 +149,7 @@ END;
 | LLM 연동 | `provider` | 사용할 AI 제공자입니다. |
 | LLM 연동 | `model` | 사용할 모델 이름입니다. |
 | LLM 연동 | `credential_name` | AI 제공자 인증에 사용할 등록된 Credential 이름입니다. Ollama 같은 온프레미스 LLM을 인증 없는 엔드포인트로 연동하는 구성에서는 생략할 수 있습니다. |
-| LLM 연동 | `provider_endpoint` | AI 제공자의 API 엔드포인트입니다. |
+| LLM 연동 | `provider_endpoint` | AI 제공자의 API 엔드포인트입니다. 온프래미스 환경에서는 OpenAI 호환 API 방식을 사용합니다. |
 | 대상 객체 | `object_list` | 메타데이터를 활용할 객체 목록입니다. `owner`와 `name`으로 지정합니다. |
 | 대상 객체 | `object_list_mode` | 전체 객체의 메타데이터(`all`) 또는 질문과 관련된 객체의 메타데이터(`automated`)를 전달합니다. |
 | 대상 객체 | `enforce_object_list` | 생성 SQL이 `object_list`의 객체만 사용하도록 제한할지 지정합니다. DB 접근 권한을 부여하는 설정은 아닙니다. |
