@@ -278,3 +278,39 @@ SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
 프로파일 생성 구문은 해당 Part의 기존 프로파일을 먼저 삭제한 후 다시 생성합니다. `force => TRUE`는 프로파일이 없어도 삭제 단계에서 오류가 발생하지 않도록 합니다. 새 DB 세션으로 접속할 때는 해당 Part의 `SET_PROFILE`을 다시 실행합니다.
 
 생성 SQL은 기대 SQL 및 조회 결과와 함께 검증합니다.
+
+## Annotation 적용 전후 실행 결과 비교
+
+다음은 동일한 데이터와 자연어 질문으로 확인한 실습 실행 결과입니다.
+
+```sql
+SELECT AI runsql 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
+```
+
+### Annotation 미사용: Part 1
+
+`SELECTAI_PRODUCTS_NOANN` 프로파일로 실행했을 때 조회 결과가 없었습니다.
+
+```text
+선택된 레코드가 없습니다.
+```
+
+이는 비교 실습에서 관찰한 결과입니다. 데이터에 해당 상품이 없다는 의미로 판단하지 않고, 생성 SQL에 업무 정의가 올바르게 반영되었는지 확인합니다.
+
+### Annotation 사용: Part 2
+
+`SELECTAI_PRODUCTS_ANN` 프로파일로 같은 질문을 실행했을 때 다음 5개 상품이 조회되었습니다.
+
+| PROD_NAME | PROD_LIST_PRICE |
+|---|---:|
+| Pitching Machine and Batting Cage Combo | 999.99 |
+| Speed Trainer Bats and Training Program | 899.99 |
+| Pro Maple Bat | 192.99 |
+| 5 Point Batting Tee | 112.99 |
+| Pro Style Batting Tee | 149.99 |
+
+### 비교 결과 해석
+
+Annotation으로 **‘야구용품’은 `PROD_CATEGORY = 'Baseball'`, ‘고가 상품’은 `PROD_LIST_PRICE >= 100`**이라는 업무 의미를 제공합니다. 동일한 질문에 대해 Annotation 미사용 시에는 조회 결과가 없었지만, 사용 시에는 업무 조건에 해당하는 상품 5건이 조회되었습니다. 업무 용어와 실제 데이터 값·조건을 연결하는 Annotation이 **SQL 작성의 정확도 향상에 도움을 주는 사례**입니다.
+
+위 내용은 확인된 실행 사례이며, 모델과 환경에 따라 생성 SQL과 결과는 달라질 수 있습니다. 각 Part에서 `showsql`로 생성 SQL도 확인하여 `Baseball` 조건과 정가 100 이상 조건이 반영되었는지 비교합니다. `showsql`은 별도로 SQL을 생성하므로, 앞서 실행한 `runsql`의 SQL과 동일하다고 가정하지 않습니다.
