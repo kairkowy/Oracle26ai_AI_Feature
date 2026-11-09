@@ -2,7 +2,7 @@
 
 관리자가 대상 PDB에서 `lab00`~`lab19`의 20개 계정을 준비하는 스크립트입니다. 기본 테이블스페이스는 `USERS`이며 해당 테이블스페이스의 quota를 `UNLIMITED`로 설정하고, `CONNECT`·`RESOURCE` 역할과 SH 전체 9개 테이블의 `SELECT` 권한을 부여합니다. 계정별 데이터 복사와 기본키·외래키 생성도 이 문서에서 준비합니다.
 
-실행 순서는 **이 문서의 계정 생성 → [실습환경 구성](SelectAiConfigure.md)의 패키지·Wallet·ACL 설정 → 이 문서의 패키지 실행 권한 부여·데이터 준비 → [샘플 데이터 구성](SampleDataConfig.md)의 Annotation 등록**입니다. 1~3단원은 SQL*Plus 또는 SQLcl에서 SYS 등 사용자·역할·객체 권한을 관리할 수 있는 계정으로 실행합니다. 4단원은 각 실습 계정으로 접속하여 반복 실행합니다. SH 데이터와 `USERS` 테이블스페이스는 대상 PDB에 준비되어 있어야 합니다.
+실행 순서는 **이 문서의 계정 생성 → [실습환경 구성](SelectAiConfigure.md)의 패키지·Wallet·ACL 설정 → 이 문서의 패키지 실행 권한 부여·데이터 준비 → [샘플 데이터 구성](SampleDataConfig.md)의 Annotation 등록**입니다. 1~3단원은 SQL*Plus 또는 SQLcl에서 SYS 등 사용자·역할·객체 권한을 관리할 수 있는 계정으로 실행합니다. 4~5단원은 각 실습 계정으로 접속하여 실행합니다. 5단원의 클린징은 실습 종료 후 필요한 경우 수행합니다. SH 데이터와 `USERS` 테이블스페이스는 대상 PDB에 준비되어 있어야 합니다.
 
 ## 1. 계정 생성과 기본 권한 부여
 
@@ -270,3 +270,73 @@ WHENEVER SQLERROR CONTINUE NONE
 데이터 준비 후 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#2-실습-계정별-annotation-등록)으로 이동합니다.
 
 참고: [Oracle 사용자 생성과 quota](https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-USER.html)
+
+## 5. 실습 데이터·테이블 클린징
+
+실습을 마친 뒤 본인 계정의 데이터를 정리할 때 사용합니다. 먼저 대상 계정을 확인한 후 **데이터만 삭제**하거나 **테이블을 삭제**하는 작업 중 필요한 하나를 선택합니다. 대상은 실습 계정에 복사한 9개 테이블이며, 원본 SH 데이터는 유지합니다.
+
+### 5.1 대상 계정 확인
+
+정리할 실습 계정으로 대상 PDB에 접속한 뒤 실행합니다. 입력 계정이 `lab00`~`lab19` 범위를 벗어나거나 접속 계정과 다르면 SQL*Plus 또는 SQLcl을 종료하여 후속 삭제를 중단합니다.
+
+```sql
+SET DEFINE ON
+ACCEPT LAB_USER CHAR DEFAULT 'lab00' PROMPT '정리할 실습 계정(lab00~lab19, 기본 lab00): '
+DEFINE LAB_USER
+
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
+BEGIN
+  IF NOT REGEXP_LIKE(UPPER('&&LAB_USER'), '^LAB(0[0-9]|1[0-9])$') THEN
+    RAISE_APPLICATION_ERROR(-20001, '실습 계정은 lab00~lab19 중 하나를 입력하십시오.');
+  END IF;
+  IF USER <> UPPER('&&LAB_USER') THEN
+    RAISE_APPLICATION_ERROR(-20002, '정리할 실습 계정으로 접속한 후 실행하십시오.');
+  END IF;
+END;
+/
+
+SELECT USER AS cleanup_user,
+       SYS_CONTEXT('USERENV', 'CON_NAME') AS current_pdb
+FROM dual;
+```
+
+### 5.2 데이터만 삭제
+
+테이블 구조, 기본키·외래키와 Annotation을 유지하고 모든 행을 삭제합니다. 외래키 관계에 따라 자식 테이블부터 삭제합니다. `COMMIT`으로 삭제를 확정합니다.
+
+```sql
+DELETE FROM &&LAB_USER..sales;
+DELETE FROM &&LAB_USER..costs;
+DELETE FROM &&LAB_USER..supplementary_demographics;
+DELETE FROM &&LAB_USER..customers;
+DELETE FROM &&LAB_USER..countries;
+DELETE FROM &&LAB_USER..products;
+DELETE FROM &&LAB_USER..times;
+DELETE FROM &&LAB_USER..channels;
+DELETE FROM &&LAB_USER..promotions;
+
+COMMIT;
+WHENEVER SQLERROR CONTINUE NONE
+```
+
+데이터 삭제 후 다시 실습하려면 테이블 생성·키 생성은 반복하지 않고, 각 테이블에 `INSERT INTO 실습계정.테이블 SELECT * FROM SH.테이블` 방식으로 부모 테이블부터 데이터를 적재합니다.
+
+### 5.3 테이블 삭제
+
+테이블과 해당 테이블의 데이터·제약조건·Annotation을 함께 제거합니다. 자식 테이블부터 삭제하며, DDL은 자동 커밋됩니다. 다시 실습하려면 [이 문서의 데이터 준비](#4-실습-계정별-데이터-준비)와 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#2-실습-계정별-annotation-등록)을 실행합니다.
+
+```sql
+DROP TABLE &&LAB_USER..sales;
+DROP TABLE &&LAB_USER..costs;
+DROP TABLE &&LAB_USER..supplementary_demographics;
+DROP TABLE &&LAB_USER..customers;
+DROP TABLE &&LAB_USER..countries;
+DROP TABLE &&LAB_USER..products;
+DROP TABLE &&LAB_USER..times;
+DROP TABLE &&LAB_USER..channels;
+DROP TABLE &&LAB_USER..promotions;
+
+WHENEVER SQLERROR CONTINUE NONE
+```
+
+실습 사용자, 권한·ACL, Wallet과 Select AI 프로파일은 이 클린징 작업의 대상에 포함하지 않습니다.
