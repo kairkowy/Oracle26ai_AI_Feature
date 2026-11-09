@@ -91,14 +91,14 @@ Annotation을 사용하지 않은 상태에서 자연어 질문으로 SQL을 생
 
 Ollama 엔드포인트와 모델명을 실제 환경에 맞게 변경합니다. 인증 없는 Ollama 프록시 구성이므로 `credential_name`은 지정하지 않습니다. `/v1` 경로는 23.26.2 구성 예시이며, 설치 버전과 프록시 구성에 맞게 조정합니다. 환경 설정은 [SELECT AI 환경구성](SelectAiConfigure.md)에서 확인합니다.
 
-Part 1 프로파일은 `annotations=false`로 설정하여 Annotation을 SQL 생성에 사용하지 않습니다. `DEFINE LAB_OWNER`에는 현재 접속한 실습 계정을 대문자로 지정합니다. 예를 들어 `lab07` 계정은 `LAB07`로 설정합니다.
+Part 1 프로파일은 `annotations=false`로 설정하여 Annotation을 SQL 생성에 사용하지 않습니다. `ACCEPT LAB_OWNER`로 대상 테이블의 소유자를 입력받습니다. `LAB07` 또는 `SH`처럼 대문자로 입력하며, 접속 계정에는 해당 테이블의 조회 권한이 있어야 합니다.
 
 ```sql
 DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
 DEFINE OLLAMA_MODEL = gemma2:9b
 
-DEFINE LAB_OWNER = LAB00
-SELECT USER AS LAB_OWNER FROM dual;
+ACCEPT LAB_OWNER CHAR PROMPT '테이블 소유자(대문자, 예: LAB00 또는 SH): '
+SELECT USER AS current_user, '&&LAB_OWNER' AS target_owner FROM dual;
 
 
 BEGIN
@@ -185,14 +185,14 @@ SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
 
 ### 프로파일 생성과 적용: SELECTAI_PRODUCTS_ANN
 
-Part 2 프로파일은 `annotations=true`로 설정하여 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#2-실습-계정별-annotation-등록)에서 준비한 업무 정의와 조인 관계를 활용합니다. 엔드포인트와 모델은 Part 1과 동일하게 지정합니다.
+Part 2 프로파일은 `annotations=true`로 설정하여 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#2-실습-계정별-annotation-등록)에서 준비한 업무 정의와 조인 관계를 활용합니다. 엔드포인트·모델과 입력할 테이블 소유자는 Part 1과 동일하게 지정합니다.
 
 ```sql
 DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
 DEFINE OLLAMA_MODEL = gemma2:9b
 
-DEFINE LAB_OWNER = LAB00
-SELECT USER AS LAB_OWNER FROM dual;
+ACCEPT LAB_OWNER CHAR PROMPT '테이블 소유자(대문자, 예: LAB00 또는 SH): '
+SELECT USER AS current_user, '&&LAB_OWNER' AS target_owner FROM dual;
 
 
 BEGIN
