@@ -1,6 +1,6 @@
 # SELECT AI 샘플 데이터 구성
 
-[SELECT AI 환경구성](SelectAiConfigure.md)의 패키지·Wallet·ACL 설정과 [실습 계정 관리의 데이터 준비](lab_admin.md#4-실습-계정별-데이터-준비)를 완료한 후, 대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속하여 실행합니다. 이 문서는 SH 스키마 구조와 데이터 설명, Annotation 등록·확인을 다룹니다.
+[SELECT AI 환경구성](SelectAiConfigure.md)의 패키지·Wallet·ACL 설정과 [실습 계정 관리의 데이터 준비](lab_admin.md#4-실습-계정별-데이터-준비)를 완료한 후, 실습 PDB `orclpdb2`에 본인의 실습 계정(`lab00`~`lab19`)으로 접속하여 실행합니다. 이 문서는 SH 스키마 구조와 데이터 설명, Annotation 등록·확인을 다룹니다.
 
 Annotation은 실습 데이터를 준비할 때 함께 등록합니다. [SELECT AI 예제](SelectAiExample.md)의 Part 1은 `annotations=false`로 Annotation을 LLM에 전달하지 않고, Part 2는 `annotations=true`로 전달하므로 같은 데이터에서 효과를 비교할 수 있습니다.
 

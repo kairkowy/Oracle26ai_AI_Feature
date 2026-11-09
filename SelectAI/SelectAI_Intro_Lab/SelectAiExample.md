@@ -39,7 +39,7 @@
 
 ## 실행 전 확인
 
-[SELECT AI 환경구성](SelectAiConfigure.md)의 관리자 설정, [실습 계정 관리](lab_admin.md#4-실습-계정별-데이터-준비)의 데이터 준비와 [샘플 데이터 구성](SampleDataConfig.md)의 Annotation 등록을 먼저 완료합니다. 이후 스크립트는 SQL*Plus 또는 SQLcl에서 **대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속한 세션**에서 실행합니다. Part 1은 등록된 Annotation을 사용하지 않고, Part 2는 같은 Annotation을 사용합니다.
+[SELECT AI 환경구성](SelectAiConfigure.md)의 관리자 설정, [실습 계정 관리](lab_admin.md#4-실습-계정별-데이터-준비)의 데이터 준비와 [샘플 데이터 구성](SampleDataConfig.md)의 Annotation 등록을 먼저 완료합니다. 이후 스크립트는 SQL*Plus 또는 SQLcl에서 **실습 PDB `orclpdb2`에 본인의 실습 계정(`lab00`~`lab19`)으로 접속한 세션**에서 실행합니다. Part 1은 등록된 Annotation을 사용하지 않고, Part 2는 같은 Annotation을 사용합니다.
 
 ### ACL 확인
 

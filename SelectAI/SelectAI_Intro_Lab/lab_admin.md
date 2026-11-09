@@ -6,7 +6,7 @@
 
 ## 1. 계정 생성과 기본 권한 부여
 
-PDB 이름과 테이블스페이스를 환경에 맞게 변경합니다. 신규 계정에 사용할 공통 실습 비밀번호를 입력합니다. 아래 입력 방식에서는 비밀번호에 큰따옴표(`"`)와 물결표(`~`)를 사용하지 않습니다. 재실행 시 기존 계정의 비밀번호는 유지하고 역할·quota·SH 조회 권한을 다시 적용합니다.
+실습 PDB는 `orclpdb2`입니다. 테이블스페이스는 환경에 맞게 변경합니다. 신규 계정에 사용할 공통 실습 비밀번호를 입력합니다. 아래 입력 방식에서는 비밀번호에 큰따옴표(`"`)와 물결표(`~`)를 사용하지 않습니다. 재실행 시 기존 계정의 비밀번호는 유지하고 역할·quota·SH 조회 권한을 다시 적용합니다.
 
 ```sql
 SET DEFINE ON
@@ -14,7 +14,7 @@ SET VERIFY OFF
 SET ECHO OFF
 SET SERVEROUTPUT ON
 
-DEFINE LAB_PDB = orclpdb1
+DEFINE LAB_PDB = orclpdb2
 DEFINE LAB_TABLESPACE = USERS
 ACCEPT LAB_PASSWORD CHAR PROMPT '신규 실습 계정의 공통 비밀번호: ' HIDE
 
@@ -95,7 +95,7 @@ WHENEVER SQLERROR CONTINUE NONE
 [실습환경 구성](SelectAiConfigure.md)의 `DBMS_CLOUD` 패키지 설치를 완료한 뒤 대상 PDB에서 실행합니다. 실습 계정에는 패키지 사용 권한을 부여하고, ACL 등록은 관리자 계정으로 수행합니다.
 
 ```sql
-DEFINE LAB_PDB = orclpdb1
+DEFINE LAB_PDB = orclpdb2
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 ALTER SESSION SET CONTAINER = &&LAB_PDB;
 
