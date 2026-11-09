@@ -159,6 +159,8 @@ ORDER BY grantee, table_name;
 
 ## 4. 실습 계정별 데이터 준비
 
+**원본 SH 샘플 데이터 설치·적재는 반드시 SQLcl로 실행합니다.** `sh_install.sql`이 호출하는 CSV 적재 구문은 SQLcl의 `SET LOAD`·`LOAD` 명령을 사용하므로 SQL*Plus에서는 실행되지 않습니다. 대상 PDB `orclpdb2`에서 설치 후 Verification의 9개 테이블 모두 `provided`와 `actual` 건수가 일치하는지 확인한 뒤 실습 계정으로 복사합니다. [Oracle SH 설치 안내](https://github.com/oracle-samples/db-sample-schemas/blob/main/sales_history/README.md)
+
 이후 스크립트는 **대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속한 세션**에서 실행합니다. 각 계정의 생성·역할·조회 권한·테이블스페이스 quota는 앞 단원에서 준비합니다. SH의 전체 9개 테이블을 입력한 계정에 복사하여 약 20명이 독립적으로 실습합니다. 원본 SH 데이터는 수정하지 않습니다.
 
 최초 준비 시 한 번 실행합니다. 이전 단계에서 본인 계정의 `PRODUCTS`와 기본키를 이미 만들었다면 아래의 해당 생성 구문은 생략하고 나머지 테이블을 추가합니다. 이 문서의 계정 생성 단계에서 각 계정의 `USERS` 테이블스페이스 quota를 `UNLIMITED`로 설정합니다.
