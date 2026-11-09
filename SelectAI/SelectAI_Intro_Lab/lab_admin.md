@@ -1,8 +1,8 @@
 # SELECT AI 실습 계정 관리
 
-관리자가 대상 PDB에서 `lab00`~`lab19`의 20개 계정을 준비하는 스크립트입니다. 기본 테이블스페이스는 `USERS`이며 해당 테이블스페이스의 quota를 `UNLIMITED`로 설정하고, `CONNECT`·`RESOURCE` 역할과 SH 전체 9개 테이블의 `SELECT` 권한을 부여합니다.
+관리자가 대상 PDB에서 `lab00`~`lab19`의 20개 계정을 준비하는 스크립트입니다. 기본 테이블스페이스는 `USERS`이며 해당 테이블스페이스의 quota를 `UNLIMITED`로 설정하고, `CONNECT`·`RESOURCE` 역할과 SH 전체 9개 테이블의 `SELECT` 권한을 부여합니다. 계정별 데이터 복사와 기본키·외래키 생성도 이 문서에서 준비합니다.
 
-실행 순서는 **이 문서의 계정 생성 → [실습환경 구성](SelectAiConfigure.md)의 패키지·Wallet·ACL 설정 → 이 문서의 패키지 실행 권한 부여 → [샘플 데이터 구성](SampleDataConfig.md)**입니다. SQL*Plus 또는 SQLcl에서 SYS 등 사용자·역할·객체 권한을 관리할 수 있는 계정으로 실행합니다. SH 데이터와 `USERS` 테이블스페이스는 대상 PDB에 준비되어 있어야 합니다.
+실행 순서는 **이 문서의 계정 생성 → [실습환경 구성](SelectAiConfigure.md)의 패키지·Wallet·ACL 설정 → 이 문서의 패키지 실행 권한 부여·데이터 준비 → [샘플 데이터 구성](SampleDataConfig.md)의 Annotation 등록**입니다. 1~3단원은 SQL*Plus 또는 SQLcl에서 SYS 등 사용자·역할·객체 권한을 관리할 수 있는 계정으로 실행합니다. 4단원은 각 실습 계정으로 접속하여 반복 실행합니다. SH 데이터와 `USERS` 테이블스페이스는 대상 PDB에 준비되어 있어야 합니다.
 
 ## 1. 계정 생성과 기본 권한 부여
 
@@ -156,5 +156,117 @@ AND table_name IN ('DBMS_CLOUD', 'DBMS_CLOUD_AI')
 AND privilege = 'EXECUTE'
 ORDER BY grantee, table_name;
 ```
+
+## 4. 실습 계정별 데이터 준비
+
+이후 스크립트는 **대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속한 세션**에서 실행합니다. 각 계정의 생성·역할·조회 권한·테이블스페이스 quota는 앞 단원에서 준비합니다. SH의 전체 9개 테이블을 입력한 계정에 복사하여 약 20명이 독립적으로 실습합니다. 원본 SH 데이터는 수정하지 않습니다.
+
+최초 준비 시 한 번 실행합니다. 이전 단계에서 본인 계정의 `PRODUCTS`와 기본키를 이미 만들었다면 아래의 해당 생성 구문은 생략하고 나머지 테이블을 추가합니다. 이 문서의 계정 생성 단계에서 각 계정의 `USERS` 테이블스페이스 quota를 `UNLIMITED`로 설정합니다.
+
+CTAS는 데이터를 일반 테이블로 복사하며 원본의 인덱스·분할·Comment·Annotation을 복제하지 않습니다. 조인 관계를 메타데이터로 제공할 수 있도록 기본키와 외래키는 복사 후 명시적으로 생성합니다.
+
+`ACCEPT`로 입력한 계정명을 SQL*Plus의 DEFINE 치환 변수 `LAB_USER`에 저장하여 사용합니다. Enter만 누르면 `lab00`을 사용합니다. 입력 없이 지정하려면 `ACCEPT` 줄 대신 `DEFINE LAB_USER = lab07`처럼 설정합니다. 입력 계정과 실제 접속 계정이 다르면 작업을 중단합니다.
+
+```sql
+SET DEFINE ON
+ACCEPT LAB_USER CHAR DEFAULT 'lab00' PROMPT '실습 계정(lab00~lab19, 기본 lab00): '
+DEFINE LAB_USER
+DEFINE LAB_TABLESPACE = USERS
+
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
+BEGIN
+  IF NOT REGEXP_LIKE(UPPER('&&LAB_USER'), '^LAB(0[0-9]|1[0-9])$') THEN
+    RAISE_APPLICATION_ERROR(-20001, '실습 계정은 lab00~lab19 중 하나를 입력하십시오.');
+  END IF;
+  IF USER <> UPPER('&&LAB_USER') THEN
+    RAISE_APPLICATION_ERROR(-20002, '입력한 실습 계정으로 접속한 후 실행하십시오.');
+  END IF;
+END;
+/
+
+-- SH 전체 테이블의 데이터 복사
+CREATE TABLE &&LAB_USER..countries TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.countries;
+
+CREATE TABLE &&LAB_USER..customers TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.customers;
+
+CREATE TABLE &&LAB_USER..products TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.products;
+
+CREATE TABLE &&LAB_USER..times TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.times;
+
+CREATE TABLE &&LAB_USER..channels TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.channels;
+
+CREATE TABLE &&LAB_USER..promotions TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.promotions;
+
+CREATE TABLE &&LAB_USER..supplementary_demographics TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.supplementary_demographics;
+
+CREATE TABLE &&LAB_USER..sales TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.sales;
+
+CREATE TABLE &&LAB_USER..costs TABLESPACE &&LAB_TABLESPACE AS
+SELECT * FROM sh.costs;
+
+-- 기본키 생성
+ALTER TABLE &&LAB_USER..countries ADD CONSTRAINT &&LAB_USER._countries_pk
+  PRIMARY KEY (country_id);
+ALTER TABLE &&LAB_USER..customers ADD CONSTRAINT &&LAB_USER._customers_pk
+  PRIMARY KEY (cust_id);
+ALTER TABLE &&LAB_USER..products ADD CONSTRAINT &&LAB_USER._products_pk
+  PRIMARY KEY (prod_id);
+ALTER TABLE &&LAB_USER..times ADD CONSTRAINT &&LAB_USER._times_pk
+  PRIMARY KEY (time_id);
+ALTER TABLE &&LAB_USER..channels ADD CONSTRAINT &&LAB_USER._channels_pk
+  PRIMARY KEY (channel_id);
+ALTER TABLE &&LAB_USER..promotions ADD CONSTRAINT &&LAB_USER._promotions_pk
+  PRIMARY KEY (promo_id);
+ALTER TABLE &&LAB_USER..supplementary_demographics ADD CONSTRAINT &&LAB_USER._supp_demo_pk
+  PRIMARY KEY (cust_id);
+
+-- 외래키 생성
+ALTER TABLE &&LAB_USER..customers ADD CONSTRAINT &&LAB_USER._customers_country_fk
+  FOREIGN KEY (country_id) REFERENCES &&LAB_USER..countries (country_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_product_fk
+  FOREIGN KEY (prod_id) REFERENCES &&LAB_USER..products (prod_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_customer_fk
+  FOREIGN KEY (cust_id) REFERENCES &&LAB_USER..customers (cust_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_time_fk
+  FOREIGN KEY (time_id) REFERENCES &&LAB_USER..times (time_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_channel_fk
+  FOREIGN KEY (channel_id) REFERENCES &&LAB_USER..channels (channel_id);
+ALTER TABLE &&LAB_USER..sales ADD CONSTRAINT &&LAB_USER._sales_promo_fk
+  FOREIGN KEY (promo_id) REFERENCES &&LAB_USER..promotions (promo_id);
+ALTER TABLE &&LAB_USER..costs ADD CONSTRAINT &&LAB_USER._costs_product_fk
+  FOREIGN KEY (prod_id) REFERENCES &&LAB_USER..products (prod_id);
+ALTER TABLE &&LAB_USER..costs ADD CONSTRAINT &&LAB_USER._costs_time_fk
+  FOREIGN KEY (time_id) REFERENCES &&LAB_USER..times (time_id);
+ALTER TABLE &&LAB_USER..costs ADD CONSTRAINT &&LAB_USER._costs_channel_fk
+  FOREIGN KEY (channel_id) REFERENCES &&LAB_USER..channels (channel_id);
+ALTER TABLE &&LAB_USER..costs ADD CONSTRAINT &&LAB_USER._costs_promo_fk
+  FOREIGN KEY (promo_id) REFERENCES &&LAB_USER..promotions (promo_id);
+
+-- 전체 테이블 데이터 확인
+SELECT 'PRODUCTS' AS table_name, COUNT(*) AS row_count FROM &&LAB_USER..products
+UNION ALL SELECT 'SALES', COUNT(*) FROM &&LAB_USER..sales
+UNION ALL SELECT 'COSTS', COUNT(*) FROM &&LAB_USER..costs
+UNION ALL SELECT 'CUSTOMERS', COUNT(*) FROM &&LAB_USER..customers
+UNION ALL SELECT 'COUNTRIES', COUNT(*) FROM &&LAB_USER..countries
+UNION ALL SELECT 'TIMES', COUNT(*) FROM &&LAB_USER..times
+UNION ALL SELECT 'CHANNELS', COUNT(*) FROM &&LAB_USER..channels
+UNION ALL SELECT 'PROMOTIONS', COUNT(*) FROM &&LAB_USER..promotions
+UNION ALL SELECT 'SUPPLEMENTARY_DEMOGRAPHICS', COUNT(*)
+  FROM &&LAB_USER..supplementary_demographics;
+
+WHENEVER SQLERROR CONTINUE NONE
+```
+
+`SUPPLEMENTARY_DEMOGRAPHICS.CUST_ID`와 `CUSTOMERS.CUST_ID`는 논리적으로 연결됩니다. 원본 SH 정의와 동일하게 이 관계에는 별도 외래키를 추가하지 않습니다.
+
+데이터 준비 후 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#2-실습-계정별-annotation-등록)으로 이동합니다.
 
 참고: [Oracle 사용자 생성과 quota](https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/CREATE-USER.html)

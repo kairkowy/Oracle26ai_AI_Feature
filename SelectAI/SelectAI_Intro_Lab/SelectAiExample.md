@@ -39,7 +39,7 @@
 
 ## 실행 전 확인
 
-[SELECT AI 실습환경 구성](SelectAiConfigure.md)의 관리자 설정과 [샘플 데이터 구성](SampleDataConfig.md)의 데이터·Annotation 준비를 먼저 완료합니다. 이후 스크립트는 SQL*Plus 또는 SQLcl에서 **대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속한 세션**에서 실행합니다. Part 1은 등록된 Annotation을 사용하지 않고, Part 2는 같은 Annotation을 사용합니다.
+[SELECT AI 환경구성](SelectAiConfigure.md)의 관리자 설정, [실습 계정 관리](lab_admin.md#4-실습-계정별-데이터-준비)의 데이터 준비와 [샘플 데이터 구성](SampleDataConfig.md)의 Annotation 등록을 먼저 완료합니다. 이후 스크립트는 SQL*Plus 또는 SQLcl에서 **대상 PDB에 본인의 실습 계정(`lab00`~`lab19`)으로 접속한 세션**에서 실행합니다. Part 1은 등록된 Annotation을 사용하지 않고, Part 2는 같은 Annotation을 사용합니다.
 
 ### ACL 확인
 
@@ -185,7 +185,7 @@ SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
 
 ### 프로파일 생성과 적용: SELECTAI_PRODUCTS_ANN
 
-Part 2 프로파일은 `annotations=true`로 설정하여 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#3-실습-계정별-annotation-등록)에서 준비한 업무 정의와 조인 관계를 활용합니다. 엔드포인트와 모델은 Part 1과 동일하게 지정합니다.
+Part 2 프로파일은 `annotations=true`로 설정하여 [샘플 데이터 구성의 Annotation 등록](SampleDataConfig.md#2-실습-계정별-annotation-등록)에서 준비한 업무 정의와 조인 관계를 활용합니다. 엔드포인트와 모델은 Part 1과 동일하게 지정합니다.
 
 ```sql
 DEFINE OLLAMA_ENDPOINT = http://service-ollama/v1
