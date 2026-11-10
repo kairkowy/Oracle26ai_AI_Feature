@@ -88,9 +88,9 @@ SELECT AI Actions 자연어 질문;
 - **자연어 질문**: 조회하거나 분석할 내용을 자연어로 입력합니다.
 - **;**: SQL 문장의 끝을 나타냅니다.
 
-### actions 종류
+### Actions 종류
 
-`actions` 자리에는 다음 중 수행할 Action 하나를 입력합니다.
+`Actions` 자리에는 다음 중 수행할 action 하나를 입력합니다.
 
 | Action | 간략한 설명 |
 |---|---|
