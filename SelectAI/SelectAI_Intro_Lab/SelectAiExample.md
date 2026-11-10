@@ -446,3 +446,17 @@ SELECT AI runsql 야구용품 중 고가 상품의 상품명과 정가를 보여
 Annotation으로 **‘야구용품’은 `PROD_CATEGORY = 'Baseball'`, ‘고가 상품’은 `PROD_LIST_PRICE >= 100`**이라는 업무 의미를 제공합니다. 동일한 질문에 대해 Annotation 미사용 시에는 조회 결과가 없었지만, 사용 시에는 업무 조건에 해당하는 상품 5건이 조회되었습니다. 업무 용어와 실제 데이터 값·조건을 연결하는 Annotation이 **SQL 작성의 정확도 향상에 도움을 주는 사례**입니다.
 
 위 내용은 확인된 실행 사례이며, 모델과 환경에 따라 생성 SQL과 결과는 달라질 수 있습니다. 각 Part에서 `showsql`로 생성 SQL도 확인하여 `Baseball` 조건과 정가 100 이상 조건이 반영되었는지 비교합니다. `showsql`은 별도로 SQL을 생성하므로, 앞서 실행한 `runsql`의 SQL과 동일하다고 가정하지 않습니다.
+
+## SELECT AI 쿼리 정확도 향상 방안
+
+Oracle은 **테이블·컬럼의 업무 설명과 관계 정보를 메타데이터로 제공**하여 자연어 질문에서 생성되는 SQL의 정확도를 높이는 방법을 안내합니다. 주요 방법은 다음과 같습니다. [Oracle SQL 생성 개선 가이드](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/generate-and-improve-sql-queries.html)
+
+| 방법 | 적용 내용 |
+|---|---|
+| Comments 활용 | 테이블·컬럼의 용도와 업무 의미를 Comment로 작성하고 `comments=true`로 전달합니다. |
+| Annotations 활용 | 업무 용어, 실제 데이터 값, 필터·집계 기준을 Annotation에 작성하고 `annotations=true`로 전달합니다. |
+| PK·FK 관계 활용 | 실제 PK·FK 제약조건을 정의하고 `constraints=true`로 테이블 간 관계 정보를 전달하여 조인 조건 생성을 돕습니다. 옵션을 켜는 것만으로 제약조건이 생성되지는 않습니다. |
+
+업무 설명에는 **단위·허용 값·시간 기준·조인 경로·동의어·예시 값** 등을 명확히 포함하는 것이 좋습니다. 이 실습에서는 ‘야구용품=Baseball’, ‘고가=정가 100 이상’, ‘매출액=AMOUNT_SOLD 합계’와 상품·고객·국가 테이블의 연결 관계가 해당합니다. [Oracle 메타데이터 보강 가이드](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/data-and-metadata-concepts.html)
+
+본 실습은 Annotation의 효과를 비교하기 위해 두 Part 모두 `comments=false`를 유지합니다. 실제 활용에서는 필요한 메타데이터를 함께 제공하고, 생성 SQL의 조건·조인·집계를 검증합니다. 메타데이터 보강은 정확도 향상을 도울 수 있지만 모든 SQL의 정확성을 보장하지는 않습니다.
