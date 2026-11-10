@@ -162,7 +162,7 @@ EXEC DBMS_CLOUD_AI.SET_ATTRIBUTE('SELECTAI_PRODUCTS_NOANN', 'enforce_object_list
 | LLM 연동 | `provider_endpoint` | AI 제공자의 API 엔드포인트입니다. 온프래미스 환경에서는 OpenAI 호환 API 방식을 사용합니다. |
 | 대상 객체 | `object_list` | 메타데이터를 활용할 객체 목록입니다. `owner`와 `name`으로 지정합니다. |
 | 대상 객체 | `object_list_mode` | 전체 객체의 메타데이터(`all`) 또는 질문과 관련된 객체의 메타데이터(`automated`)를 전달합니다. |
-| 대상 객체 | `enforce_object_list` | 생성 SQL이 `object_list`의 객체만 사용하도록 제한할지 지정합니다. DB 접근 권한을 부여하는 설정은 아닙니다. |
+| 대상 객체 | `enforce_object_list` | 생성 SQL이 `object_list`의 객체만 사용하도록 제한할지 지정합니다. **기본값은 `false`**이며, `true`로 설정하면 객체 목록으로 제한합니다. `false`에서는 실행 계정이 접근할 수 있는 테이블을 사용할 수 있습니다. DB 접근 권한을 부여하는 설정은 아닙니다. |
 | 메타데이터 | `comments` | 테이블·컬럼의 Comment를 프롬프트에 포함할지 지정합니다. 기본값은 `false`이며, 포함하려면 `true`로 설정합니다. |
 | 메타데이터 | `annotations` | 테이블·컬럼의 Annotation을 포함합니다. 기본값은 `false`입니다. |
 | 메타데이터 | `constraints` | PK·FK 등 참조 무결성 제약조건을 포함합니다. 기본값은 `false`입니다. |
