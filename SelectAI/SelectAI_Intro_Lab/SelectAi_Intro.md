@@ -101,7 +101,7 @@ SELECT AI Actions 자연어 질문;
 | `chat` | LLM과 자연어로 대화합니다. |
 | `showprompt` | NL2SQL 또는 RAG 처리 시 LLM에 전달할 프롬프트를 보여줍니다. |
 | `summarize` | 입력한 텍스트를 요약합니다. |
-| `feedback` | SQL 생성 정확도 개선을 위한 자연어 피드백을 제공합니다. |
+| `feedback` | 생성된 SQL의 잘못된 해석을 바로잡거나 요청 요건을 보강하는 후속 명령입니다. |
 | `translate` | OCI 번역 서비스를 이용해 지정한 언어로 번역합니다. |
 | `agent` | 구성된 AI 에이전트 팀을 호출해 요청을 처리합니다. |
 
