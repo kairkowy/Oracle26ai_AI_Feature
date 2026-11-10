@@ -324,6 +324,62 @@ SELECT AI runsql 연도별 야구용품 매출액을 보여줘;
 SELECT AI runsql 국가별 고가 야구용품 매출액을 보여줘;
 ```
 
+실행 결과 예시:
+
+```text
+SQL> SELECT AI runsql 상품 대분류별 상품 수를 많은 순서로 보여줘;
+
+PROD_CATEGORY_DESC                                    상품 수
+-------------------------------------------------- ----------
+Cricket                                                    26
+Baseball                                                   21
+Tennis                                                     13
+Soccer / Football                                          10
+Golf                                                        2
+
+SQL> SELECT AI runsql 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
+
+PROD_NAME                                          PROD_LIST_PRICE
+-------------------------------------------------- ---------------
+Pitching Machine and Batting Cage Combo                     999.99
+Speed Trainer Bats and Training Program                     899.99
+Pro Maple Bat                                               192.99
+5 Point Batting Tee                                         112.99
+Pro Style Batting Tee                                       149.99
+
+SQL> SELECT AI runsql 연도별 야구용품 매출액을 보여줘;
+
+CALENDAR_YEAR 연도별 야구용품 매출액
+------------- ----------------------
+         2019             9073257.37
+         2020             7766237.11
+         2021             6464786.22
+         2022             7859707.71
+
+SQL> SELECT AI runsql 국가별 고가 야구용품 매출액을 보여줘;
+
+COUNTRY_NAME                             Total_Sales
+---------------------------------------- -----------
+United States of America                  10380704.9
+Germany                                   1710980.88
+Japan                                     1485304.35
+United Kingdom                            1257033.11
+Italy                                         856885
+Australia                                  724323.25
+France                                     678509.15
+Singapore                                  653413.03
+Canada                                        557381
+Spain                                      425063.59
+Denmark                                    363374.78
+Brazil                                      10089.87
+Argentina                                    7097.72
+Turkey                                       2647.24
+China                                        1049.98
+Poland                                        149.99
+Saudi Arabia                                  149.99
+New Zealand                                   149.99
+```
+
 #### narrate: 조회 결과의 자연어 설명
 
 SQL 조회 결과를 LLM에 전달하여 자연어 설명을 받습니다.
