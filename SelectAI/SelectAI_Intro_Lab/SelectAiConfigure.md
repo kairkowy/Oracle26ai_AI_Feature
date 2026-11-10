@@ -125,6 +125,7 @@ SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서
 ```sql
 DEFINE LAB_PDB = orclpdb2
 DEFINE OLLAMA_HOST = service-ollama
+DEFINE LAB_USER = LAB00
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 
@@ -160,7 +161,7 @@ BEGIN
     host => '&&OLLAMA_HOST',
     ace  => xs$ace_type(
       privilege_list => xs$name_list('http', 'connect', 'resolve'),
-      principal_name => 'LAB00',
+      principal_name => UPPER('&&LAB_USER'),
       principal_type => xs_acl.ptype_db
     )
   );
@@ -174,7 +175,7 @@ FROM dual;
 SELECT host, lower_port, upper_port, principal, privilege, grant_type
 FROM   dba_host_aces
 WHERE  host = '&&OLLAMA_HOST'
-AND    principal = 'LAB00'
+AND    principal = UPPER('&&LAB_USER')
 ORDER BY privilege;
 
 WHENEVER SQLERROR CONTINUE NONE
