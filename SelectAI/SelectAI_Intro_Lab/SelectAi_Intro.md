@@ -142,6 +142,16 @@ END;
 
 `profile_name`은 프로파일 식별자이고, `attributes`는 LLM 연동과 SQL 생성 방식을 정합니다. `status`와 `description`은 선택 항목이며, 상태를 생략하면 기본으로 활성화됩니다. 생성된 프로파일의 활성화 상태와 현재 세션에서 사용할 프로파일 지정은 별개입니다.
 
+#### 참고: 프로파일 속성값 변경
+
+기존 프로파일의 속성은 프로파일을 다시 생성하지 않고 `DBMS_CLOUD_AI.SET_ATTRIBUTE`로 변경할 수 있습니다. 인수는 순서대로 **프로파일 이름, 속성 이름, 변경할 값**입니다.
+
+```sql
+EXEC DBMS_CLOUD_AI.SET_ATTRIBUTE('SELECTAI_PRODUCTS_NOANN', 'enforce_object_list', 'false');
+```
+
+위 예제는 `SELECTAI_PRODUCTS_NOANN` 프로파일의 `enforce_object_list`를 `false`로 변경합니다. 다시 제한하려면 마지막 값을 `'true'`로 지정합니다.
+
 ### 주요 attributes
 
 | 구분 | Attribute | 간략한 설명 |
