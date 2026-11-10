@@ -80,11 +80,11 @@ Select AI와 SQL 실행 엔진은 Oracle AI Database 내부에 위치합니다. 
 
 ```sql
 EXECUTE DBMS_CLOUD_AI.SET_PROFILE('사용자 지정 프로파일');
-SELECT AI actions 자연어 질문;
+SELECT AI Actions 자연어 질문;
 ```
 - **DBMS_CLOUD_AI.SET_PROFILE**: 현재 세션에서 SELECT AI가 사용할 프로파일을 지정하는 명령입니다.
 - **SELECT AI**: 자연어 요청을 Select AI로 처리하도록 지정합니다.
-- **actions**: 수행할 Action 하나를 지정하는 자리입니다. `runsql`, `showsql`, `explainsql`, `narrate` 등을 사용하며, 생략하면 `runsql`이 적용됩니다.
+- **Actions**: 수행할 Action 하나를 지정하는 자리입니다. `runsql`, `showsql`, `explainsql`, `narrate` 등을 사용하며, 생략하면 `runsql`이 적용됩니다.
 - **자연어 질문**: 조회하거나 분석할 내용을 자연어로 입력합니다.
 - **;**: SQL 문장의 끝을 나타냅니다.
 
