@@ -12,7 +12,7 @@
 
 ![SELECT AI 구조](images/select-ai-architecture.svg)
 
-**Select AI**는 Profile(사용자지정)과 메타데이터를 활용해 LLM에 SQL 생성을 요청하고, **Action**에 따라 SQL을 보여주거나 실행 결과를 반환합니다. `narrate`는 조회 결과를 LLM에 다시 전달하여 자연어로 설명합니다.
+**Select AI**는 사용자지정 Profile에 테이블, 뷰와 같은 데이터 객체와 제어를 위한 속성 정보를 활용해 LLM에 SQL 생성을 요청하고, **Action**에 따라 SQL을 보여주거나 실행 결과를 반환합니다. `narrate`는 조회 결과를 LLM에 다시 전달하여 자연어로 설명합니다.
 
 그림에서는 간결한 표현을 위해 프로파일과 메타데이터를 하나의 박스로 묶었습니다. 프로파일은 처리 설정이며, 메타데이터·Annotation은 SQL 생성에 활용하는 데이터 구조와 업무 설명입니다.
 
