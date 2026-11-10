@@ -1,6 +1,6 @@
 # SELECT AI 환경 구성
 
-이 문서는 온프레미스에서 Select AI 실행을 위한 `DBMS_CLOUD` 패키지 설치, Wallet 구성, CDB·PDB ACL 설정을 다룹니다. 계정·역할·quota·SH 조회 및 패키지 실행 권한은 [실습 계정 관리](lab_admin.md)에서 준비합니다. 데이터 복사와 기본키·외래키 생성은 [실습 계정 관리](lab_admin.md#4-실습-계정별-데이터-준비), Annotation 등록은 [샘플 데이터 구성](SampleDataConfig.md)에서 진행합니다. Part별 프로파일은 [SELECT AI 예제](SelectAiExample.md)에서 생성합니다. `lab00`~`lab19` 계정과 SH의 전체 9개 테이블 및 데이터는 대상 PDB에 준비되어 있어야 합니다. PDB ACL 설정은 계정명을 입력하여 각 계정에 반복 적용합니다.
+이 문서는 온프레미스에서 Select AI 실행을 위한 `DBMS_CLOUD` 패키지 설치, Wallet 구성, CDB·PDB ACL 설정을 다룹니다. 계정·역할·quota·SH 조회 및 패키지 실행 권한은 [실습 계정 관리](lab_admin.md)에서 준비합니다. 데이터 복사와 기본키·외래키 생성은 [실습 계정 관리](lab_admin.md#4-실습-계정별-데이터-준비), Annotation 등록은 [샘플 데이터 구성](SampleDataConfig.md)에서 진행합니다. Part별 프로파일은 [SELECT AI 예제](SelectAiExample.md)에서 생성합니다. `lab00`~`lab19` 계정과 SH의 전체 9개 테이블 및 데이터는 대상 PDB에 준비되어 있어야 합니다. 이 문서의 PDB ACL 설정은 단일 계정 `lab00`을 기준으로 합니다.
 
 Shell 명령은 DB 서버의 Oracle 소프트웨어 소유 OS 계정에서, SQL은 SQL*Plus 또는 SQLcl에서 실행합니다. Oracle AI Database 26ai의 해당 설치 스크립트를 제공하는 RU 환경을 기준으로 합니다. 실습 PDB는 `orclpdb2`를 사용합니다. 테이블스페이스, Wallet 경로, Ollama 호스트·엔드포인트·모델은 실제 환경에 맞게 변경합니다. DB 서버에서 Ollama 호스트로 접속할 수 있어야 합니다.
 
@@ -113,27 +113,20 @@ WHERE  property_name = 'SSL_WALLET';
 
 ## 3. CDB·PDB ACL 등록(관리자 실행)
 
-SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서는 패키지 소유 계정 `C##CLOUD$SERVICE`, 대상 PDB에서는 사용자 계정의 ACL을 등록합니다. 각 계정에 HTTP 호출과 네트워크 접근 권한을 지정하고, 해당 컨테이너에서 등록 결과를 확인합니다.
+SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서는 패키지 소유 계정 `C##CLOUD$SERVICE`, 대상 PDB에서는 `LAB00` 계정의 ACL을 등록합니다. 각 계정에 HTTP 호출과 네트워크 접근 권한을 지정하고, 해당 컨테이너에서 등록 결과를 확인합니다.
 
 | 실행 위치 | ACL 대상 계정 | 예시 권한 |
 |---|---|---|
 | `CDB$ROOT` | `C##CLOUD$SERVICE` | `http`, `connect`, `resolve` |
-| 대상 PDB | 입력한 실습 계정(`LAB00`) | `http`, `connect`, `resolve` |
+| 대상 PDB | `LAB00` | `http`, `connect`, `resolve` |
 
 호스트는 프로토콜·포트·`/v1` 경로를 제외한 이름으로 지정합니다. 아래는 포트 제한 없이 지정 호스트에 등록하는 예시입니다. `http_proxy`는 인터넷 접속용 HTTP 프록시를 사용할 때 별도로 검토하며, 현재 Ollama 역방향 프록시 예시에는 지정하지 않습니다.
 
 ```sql
 DEFINE LAB_PDB = orclpdb2
 DEFINE OLLAMA_HOST = service-ollama
-ACCEPT LAB_USER CHAR DEFAULT 'lab00' PROMPT '설정할 실습 계정(lab00~lab19, 기본 lab00): '
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
-BEGIN
-  IF NOT REGEXP_LIKE(UPPER('&&LAB_USER'), '^LAB(0[0-9]|1[0-9])$') THEN
-    RAISE_APPLICATION_ERROR(-20001, '실습 계정은 lab00~lab19 중 하나를 입력하십시오.');
-  END IF;
-END;
-/
 
 -- CDB: Cloud 패키지 서비스 계정 ACL
 ALTER SESSION SET CONTAINER = CDB$ROOT;
@@ -160,14 +153,14 @@ WHERE  host = '&&OLLAMA_HOST'
 AND    principal = 'C##CLOUD$SERVICE'
 ORDER BY privilege;
 
--- PDB: 입력한 실습 계정에서 Ollama 서비스에 접근할 수 있도록 등록
+-- PDB: LAB00 계정에서 Ollama 서비스에 접근할 수 있도록 등록
 ALTER SESSION SET CONTAINER = &&LAB_PDB;
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
     host => '&&OLLAMA_HOST',
     ace  => xs$ace_type(
       privilege_list => xs$name_list('http', 'connect', 'resolve'),
-      principal_name => UPPER('&&LAB_USER'),
+      principal_name => 'LAB00',
       principal_type => xs_acl.ptype_db
     )
   );
@@ -181,7 +174,7 @@ FROM dual;
 SELECT host, lower_port, upper_port, principal, privilege, grant_type
 FROM   dba_host_aces
 WHERE  host = '&&OLLAMA_HOST'
-AND    principal = UPPER('&&LAB_USER')
+AND    principal = 'LAB00'
 ORDER BY privilege;
 
 WHENEVER SQLERROR CONTINUE NONE
