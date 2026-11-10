@@ -76,9 +76,10 @@ Select AI와 SQL 실행 엔진은 Oracle AI Database 내부에 위치합니다. 
 
 ## SELECT AI 실행 방법
 
-세션에 Profile(사용자지정)을 설정한 후, 다음 구조로 실행합니다.
+사용자 세션에 Profile(사용자지정)을 설정한 후, 다음 구조로 실행합니다.
 
 ```sql
+EXECUTE 
 SELECT AI actions 자연어 질문;
 ```
 
