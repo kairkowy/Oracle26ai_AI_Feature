@@ -79,7 +79,7 @@ Select AI와 SQL 실행 엔진은 Oracle AI Database 내부에 위치합니다. 
 사용자 세션에 Profile(사용자지정)을 설정한 후, 다음 구조로 실행합니다.
 
 ```sql
-EXECUTE 
+EXECUTE DBMS_CLOUD_AI.SET_PROFILE('사용자 지정 프로파일');
 SELECT AI actions 자연어 질문;
 ```
 
