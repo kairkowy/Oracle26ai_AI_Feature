@@ -331,37 +331,7 @@ New Zealand                                   149.99
 
 생성 SQL은 기대 SQL 및 조회 결과와 함께 검증합니다.
 
-## Annotation 적용 전후 실행 결과 비교
-
-다음은 동일한 데이터와 자연어 질문으로 확인한 실습 실행 결과입니다.
-
-```sql
-SELECT AI runsql 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
-```
-
-### Annotation 미사용: Part 1
-
-`SELECTAI_PRODUCTS_NOANN` 프로파일로 실행했을 때 조회 결과가 없었습니다.
-
-```text
-선택된 레코드가 없습니다.
-```
-
-이는 비교 실습에서 관찰한 결과입니다. 데이터에 해당 상품이 없다는 의미로 판단하지 않고, 생성 SQL에 업무 정의가 올바르게 반영되었는지 확인합니다.
-
-### Annotation 사용: Part 2
-
-`SELECTAI_PRODUCTS_ANN` 프로파일로 같은 질문을 실행했을 때 다음 5개 상품이 조회되었습니다.
-
-| PROD_NAME | PROD_LIST_PRICE |
-|---|---:|
-| Pitching Machine and Batting Cage Combo | 999.99 |
-| Speed Trainer Bats and Training Program | 899.99 |
-| Pro Maple Bat | 192.99 |
-| 5 Point Batting Tee | 112.99 |
-| Pro Style Batting Tee | 149.99 |
-
-### 비교 결과 해석
+## 비교 결과 해석
 
 두 파트 모두 테이블·컬럼과 제약조건 정보를 활용하지만, **Part 1은 Annotation에 담긴 업무 정의를 사용하지 않고, Part 2는 이를 SQL 생성에 추가로 활용**합니다. Annotation은 데이터를 변경하는 것이 아니라 자연어 업무 용어를 실제 컬럼·값·조건·조인 관계에 연결하는 설명을 제공합니다.
 
