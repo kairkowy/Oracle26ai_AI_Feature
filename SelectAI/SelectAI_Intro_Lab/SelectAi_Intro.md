@@ -113,7 +113,7 @@ Action별 지원 여부와 필요한 프로파일 설정은 사용 환경에 따
 
 ### 프로파일 구조
 
-프로파일은 **이름(`profile_name`), 설정(`attributes`), 상태(`status`), 설명(`description`)**으로 구성됩니다. 실제 처리 설정은 `attributes`에 JSON 형식으로 지정합니다.
+프로파일은 **이름(`profile_name`), 설정(`attributes`), 상태(`status`), 설명(`description`)**으로 구성됩니다. LLM 연동과 SQL 생성에 필요한 설정은 `attributes`에 JSON 형식으로 지정합니다.
 
 다음은 구조를 보여주는 예시로, `<...>`는 사용 환경에 맞는 값으로 변경합니다.
 
