@@ -118,7 +118,7 @@ SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서
 | 실행 위치 | ACL 대상 계정 | 예시 권한 |
 |---|---|---|
 | `CDB$ROOT` | `C##CLOUD$SERVICE` | `http`, `connect`, `resolve` |
-| 대상 PDB | 입력한 실습 계정(`LAB_USER`) | `http`, `connect`, `resolve` |
+| 대상 PDB | 입력한 실습 계정(`LAB00`) | `http`, `connect`, `resolve` |
 
 호스트는 프로토콜·포트·`/v1` 경로를 제외한 이름으로 지정합니다. 아래는 포트 제한 없이 지정 호스트에 등록하는 예시입니다. `http_proxy`는 인터넷 접속용 HTTP 프록시를 사용할 때 별도로 검토하며, 현재 Ollama 역방향 프록시 예시에는 지정하지 않습니다.
 
