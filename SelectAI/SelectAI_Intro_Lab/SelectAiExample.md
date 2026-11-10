@@ -163,6 +163,32 @@ SELECT AI runsql 연도별 야구용품 매출액을 보여줘;
 SELECT AI runsql 국가별 고가 야구용품 매출액을 보여줘;
 ```
 
+실행 결과 예시:
+
+```text
+SQL> SELECT AI runsql 상품 대분류별 상품 수를 많은 순서로 보여줘;
+
+PROD_CATEGORY_DESC                                    상품 수
+-------------------------------------------------- ----------
+Cricket                                                    26
+Baseball                                                   21
+Tennis                                                     13
+Soccer / Football                                          10
+Golf                                                        2
+
+SQL> SELECT AI runsql 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
+
+선택된 레코드가 없습니다.
+
+SQL> SELECT AI runsql 연도별 야구용품 매출액을 보여줘;
+
+선택된 레코드가 없습니다.
+
+SQL> SELECT AI runsql 국가별 고가 야구용품 매출액을 보여줘;
+
+선택된 레코드가 없습니다.
+```
+
 #### narrate: 조회 결과의 자연어 설명
 
 SQL 조회 결과를 LLM에 전달하여 자연어 설명을 받습니다.
@@ -170,14 +196,55 @@ SQL 조회 결과를 LLM에 전달하여 자연어 설명을 받습니다.
 ```sql
 EXEC DBMS_CLOUD_AI.SET_PROFILE('SELECTAI_PRODUCTS_NOANN');
 
+SET LONG 100000
+SET LINESIZE 200
+SET PAGESIZE 1000
+
 -- 단일 테이블 질문
-SELECT AI narrate 상품 대분류별 상품 수를 많은 순서로 보여줘;
-SELECT AI narrate 야구용품 중 고가 상품의 상품명과 정가를 보여줘;
+SELECT AI narrate "상품 대분류별 상품 수를 많은 순서로 보여줘. 한글로 답변해줘";
+SELECT AI narrate "야구용품 중 고가 상품의 상품명과 정가를 보여줘.한글로 답변해줘";
 
 -- 조인 질문
 SELECT AI narrate 연도별 야구용품 매출액을 보여줘;
 SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
 ```
+
+`SET LONG`은 긴 응답의 표시 한도를 늘려 SQL*Plus에서 설명문이 잘리는 것을 방지합니다.
+
+실행 결과 예시:
+
+```text
+SQL> SELECT AI narrate "상품 대분류별 상품 수를 많은 순서로 보여줘. 한글로 답변해줘";
+
+RESPONSE
+--------------------------------------------------------------------------------
+상품의 대분류별 상품 수를 보면, 크리켓 상품이 가장 많고, 야구 상품
+이 두 번째로 많습니다. 골프, 축구, 테니스 상품의 수도 각각 있습니다.
+
+SQL> SELECT AI narrate "야구용품 중 고가 상품의 상품명과 정가를 보여줘.한글로 답변해줘";
+
+RESPONSE
+--------------------------------------------------------------------------------
+해당 질문에 대한 답변이 없다는 것은, 데이터베이스에 저장된 야구
+용품 중 고가 상품에 대한 정보가 없는 것을 의미합니다.
+
+SQL> SELECT AI narrate 연도별 야구용품 매출액을 보여줘;
+
+RESPONSE
+--------------------------------------------------------------------------------
+There is no information about baseball equipment sales in th
+e provided database tables.
+
+SQL> SELECT AI narrate 국가별 고가 야구용품 매출액을 보여줘;
+
+RESPONSE
+--------------------------------------------------------------------------------
+There is no information about baseball equipment sales broke
+n down by country in the provided databa
+se tables.
+```
+
+위 내용은 Annotation 미사용 상태에서 관찰한 실행 결과입니다. 조회 결과가 없거나 `narrate`가 정보가 없다고 설명하더라도 실제 데이터가 없다는 뜻으로 단정하지 않습니다. 생성 SQL이 ‘야구용품’과 ‘고가 상품’의 업무 정의를 올바르게 반영했는지 확인하고, Part 2와 비교합니다.
 
 ## Part 2. Annotation을 사용하는 예제
 
