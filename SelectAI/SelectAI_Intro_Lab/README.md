@@ -1,6 +1,6 @@
 # SELECT AI 소개 및 실습
 
-Select AI의 기본 개념과 Ollama 기반 실습환경을 살펴보고, Annotation 적용 전후의 SQL 생성 정확도를 비교하는 자료입니다. 실습 계정 관리 문서는 관리자용 자료입니다.
+Select AI의 기본 개념과 Ollama 기반 실습환경을 살펴보고, Annotation 적용 전후의 SQL 생성 정확도를 비교하는 자료입니다. 
 
 | 순서 | 문서 | 주요 내용 |
 |---|---|---|
