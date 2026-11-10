@@ -12,6 +12,8 @@ Shell 명령은 DB 서버의 Oracle 소프트웨어 소유 OS 계정에서, SQL�
 | Ollama 엔드포인트 | `http://service-ollama/v1` | Ollama 프록시 구성 예시 주소. 실제 환경에 맞게 변경 |
 | 모델 | `gemma2:9b` | DB 쿼리 실습용 예시 모델. 실제 Ollama에 설치된 모델명으로 변경 |
 
+온프래미스 Ollama 구성은 [Ollama 오프라인 설치 절차](https://github.com/kairkowy/Oracle26ai_AI_Feature/blob/main/Configuration/OLLAMA%20%EC%98%A4%ED%94%84%EB%9D%BC%EC%9D%B8%20%EC%84%A4%EC%B9%98%20%EB%B0%8F%20RPM%20%EC%84%A4%EC%B9%98%20%EB%B0%A9%EB%B2%95.md)를 참고합니다.
+
 ## 1. DBMS_CLOUD 패키지 설치
 
 `DBMS_CLOUD` 계열 패키지는 `catclouduser.sql`로 서비스 계정을 준비하고, `dbms_cloud_install.sql`로 패키지를 설치합니다. `$ORACLE_HOME`과 `$ORACLE_SID`는 대상 DB의 환경으로 설정되어 있어야 합니다. `-u SYS`의 비밀번호 입력 요청에 응답하여 순서대로 실행합니다.
