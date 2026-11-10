@@ -1,14 +1,14 @@
-# Select AI 소개 및 실습
+# Select AI 소개
 
 ## Select AI란?
 
 **Select AI는 NL2SQL(Natural Language to SQL)의 오라클 구현 프레임워크**로, LLM과 데이터베이스 메타데이터를 활용하여 자연어 질문을 SQL로 변환하고 데이터를 조회할 수 있도록 지원합니다.
 
-주요 Action으로 SQL 생성·실행(`runsql`), SQL 확인(`showsql`), SQL 설명(`explainsql`), 조회 결과의 자연어 해석(`narrate`), LLM 대화(`chat`), 프롬프트 확인(`showprompt`)을 제공하며, 요약·번역·피드백·에이전트 실행으로 활용 범위를 확장합니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
+주요 Action으로 SQL 생성·실행(`runsql`), SQL 확인(`showsql`), SQL 설명(`explainsql`), 조회 결과의 자연어 해석(`narrate`), LLM 대화(`chat`), 프롬프트 확인(`showprompt`)을 제공하며, 요약·번역·피드백·에이전트 실행으로 활용 범위를 확장할 수 있습니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
 
 ## SELECT AI 구조
 
-다음은 NL2SQL을 중심으로 표현한 개념 구조입니다.
+다음은 SELECT AI(NL2SQL)를 중심으로 표현한 개념 구조입니다.
 
 ![SELECT AI 구조](images/select-ai-architecture.svg)
 
