@@ -342,14 +342,20 @@ Annotation으로 **‘야구용품’은 `PROD_CATEGORY = 'Baseball'`, ‘고가
 
 ## SELECT AI 쿼리 정확도 향상 방안
 
-Oracle은 **테이블·컬럼의 업무 설명과 관계 정보를 메타데이터로 제공**하여 자연어 질문에서 생성되는 SQL의 정확도를 높이는 방법을 안내합니다. 주요 방법은 다음과 같습니다. [Oracle SQL 생성 개선 가이드](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/generate-and-improve-sql-queries.html)
+**테이블·컬럼의 업무 설명과 관계 정보를 메타데이터로 제공**하고, 사용할 모델과 질문을 조정하여 자연어 질문에서 생성되는 SQL의 정확도를 높일 수 있습니다.
 
 | 방법 | 적용 내용 |
 |---|---|
 | Comments 활용 | 테이블·컬럼의 용도와 업무 의미를 Comment로 작성하고 `comments=true`로 전달합니다. |
 | Annotations 활용 | 업무 용어, 실제 데이터 값, 필터·집계 기준을 Annotation에 작성하고 `annotations=true`로 전달합니다. |
 | PK·FK 관계 활용 | 실제 PK·FK 제약조건을 정의하고 `constraints=true`로 테이블 간 관계 정보를 전달하여 조인 조건 생성을 돕습니다. 옵션을 켜는 것만으로 제약조건이 생성되지는 않습니다. |
+| 모델 선택과 비교 | 한국어 질문 이해와 SQL 생성 능력을 함께 확인합니다. 동일한 데이터·질문·Annotation으로 모델만 바꿔 조건·조인·집계의 정확도를 비교하고, 응답 시간과 실행 자원도 고려합니다. |
+| 질문 단순화와 구체화 | 한 질문에 하나의 조회 목적을 담고, 필요한 조건·집계 기준을 명확히 작성합니다. 처음에는 조회에 집중하고, 복잡한 설명·출력 형식 지시는 줄입니다. 오류가 나면 필요한 테이블이나 조인 관계를 명시하여 다시 확인합니다. |
 
-업무 설명에는 **단위·허용 값·시간 기준·조인 경로·동의어·예시 값** 등을 명확히 포함하는 것이 좋습니다. 이 실습에서는 ‘야구용품=Baseball’, ‘고가=정가 100 이상’, ‘매출액=AMOUNT_SOLD 합계’와 상품·고객·국가 테이블의 연결 관계가 해당합니다. [Oracle 메타데이터 보강 가이드](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/data-and-metadata-concepts.html)
+업무 설명에는 **단위·허용 값·시간 기준·조인 경로·동의어·예시 값** 등을 명확히 포함하는 것이 좋습니다. 이 실습에서는 ‘야구용품=Baseball’, ‘고가=정가 100 이상’, ‘매출액=AMOUNT_SOLD 합계’와 상품·고객·국가 테이블의 연결 관계가 해당합니다.
+
+예를 들어 ‘국가별 고가 야구용품 매출액을 보여줘’에서 조인이 누락되면, ‘SALES, PRODUCTS, CUSTOMERS, COUNTRIES를 조인하여 국가별 고가 야구용품 매출액을 보여줘’처럼 필요한 테이블을 명시해 비교할 수 있습니다. 질문을 길게 만드는 것보다 조회 목적과 필요한 관계를 분명히 하는 데 초점을 둡니다.
 
 본 실습은 Annotation의 효과를 비교하기 위해 두 Part 모두 `comments=false`를 유지합니다. 실제 활용에서는 필요한 메타데이터를 함께 제공하고, 생성 SQL의 조건·조인·집계를 검증합니다. 메타데이터 보강은 정확도 향상을 도울 수 있지만 모든 SQL의 정확성을 보장하지는 않습니다.
+
+메타데이터 활용 참고: [SQL 생성 개선 가이드](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/generate-and-improve-sql-queries.html), [메타데이터 보강 가이드](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/data-and-metadata-concepts.html)
