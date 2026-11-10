@@ -16,7 +16,7 @@ Shell 명령은 DB 서버의 Oracle 소프트웨어 소유 OS 계정에서, SQL�
 
 ## 1. DBMS_CLOUD 패키지 설치
 
-`DBMS_CLOUD` 계열 패키지는 `catclouduser.sql`로 서비스 계정을 준비하고, `dbms_cloud_install.sql`로 패키지를 설치합니다. `$ORACLE_HOME`과 `$ORACLE_SID`는 대상 DB의 환경으로 설정되어 있어야 합니다. `-u SYS`의 비밀번호 입력 요청에 응답하여 순서대로 실행합니다.
+오라클 온프래미스 DBMS 버전에는 DBMS_CLOUD 패키지를 수동으로 설치해야 합니다. 아래 내용을 참고하여 해당 패키지 설치를 진행합니다. `DBMS_CLOUD` 계열 패키지는 `catclouduser.sql`로 서비스 계정을 준비하고, `dbms_cloud_install.sql`로 패키지를 설치합니다. `$ORACLE_HOME`과 `$ORACLE_SID`는 대상 DB의 환경으로 설정되어 있어야 합니다. `-u SYS`의 비밀번호 입력 요청에 응답하여 순서대로 실행합니다.
 
 ```bash
 mkdir -p /tmp/selectai_install
