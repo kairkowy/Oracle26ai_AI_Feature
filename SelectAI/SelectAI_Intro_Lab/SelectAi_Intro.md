@@ -50,7 +50,7 @@ sequenceDiagram
 
     U->>S: ① 자연어 질문 + Action
     Note over S,L: 네트워크 ACL로 LLM 접근 제어
-    S->>L: ② 질문 + 메타데이터
+    S->>L: ② 프롬프트 구성(질문 + 메타데이터)
     L-->>S: ③ 생성된 SQL
 
     opt runsql / narrate
