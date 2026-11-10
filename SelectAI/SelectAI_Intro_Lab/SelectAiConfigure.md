@@ -111,7 +111,7 @@ WHERE  property_name = 'SSL_WALLET';
 
 참고: [Oracle SSL Wallet 구성 안내](https://docs.oracle.com/en/database/oracle/oracle-database/26/sutil/create-ssl-wallet-with-certificates.html)
 
-## 3. 관리자: CDB·PDB ACL 등록
+## 3. CDB·PDB ACL 등록(관리자 실행)
 
 SYS 등 CDB·PDB를 관리할 수 있는 계정으로 실행합니다. CDB에서는 패키지 소유 계정 `C##CLOUD$SERVICE`, 대상 PDB에서는 입력한 실습 계정의 ACL을 등록합니다. 각 계정에 HTTP 호출과 네트워크 접근 권한을 지정하고, 해당 컨테이너에서 등록 결과를 확인합니다.
 
