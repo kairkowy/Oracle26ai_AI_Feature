@@ -2,7 +2,7 @@
 
 ## Select AI란?
 
-**Select AI는 NL2SQL(Natural Language to SQL)의 오라클 구현 프레임워크**로, 사용자가 지정한 LLM과 오라클 데이터베이스의 메타정보를 활용하여 자연어 질문을 SQL로 변환하고 데이터를 조회할 수 있도록 지원합니다.
+**Select AI는 NL2SQL(Natural Language to SQL)의 오라클 구현 프레임워크**로, 사용자가 지정한 LLM과 오라클 데이터베이스의 메타데이터를 활용하여 자연어 질문을 SQL로 변환하고 데이터를 조회할 수 있도록 지원합니다.
 
 주요 Action으로 SQL 생성·실행(`runsql`), SQL 확인(`showsql`), SQL 설명(`explainsql`), 조회 결과의 자연어 해석(`narrate`), LLM 대화(`chat`), 프롬프트 확인(`showprompt`)을 제공하며, 요약·번역·피드백·에이전트 실행으로 활용 범위를 확장할 수 있습니다. [Oracle 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-ai-keyword-enter-prompts.html)
 
@@ -12,7 +12,7 @@
 
 ![SELECT AI 구조](images/select-ai-architecture.svg)
 
-**Select AI**는 사용자지정 Profile에 테이블, 뷰와 같은 데이터 객체와 제어를 위한 속성 정보를 활용해 LLM에 SQL 생성을 요청하고, **Action**에 따라 SQL을 보여주거나 실행 결과를 반환합니다. `narrate`는 조회 결과를 LLM에 다시 전달하여 자연어로 설명합니다.
+**Select AI**는 사용자 지정 Profile에 정의된 대상 테이블·뷰와 처리 옵션을 바탕으로, 관련 메타데이터를 자연어 질문에 추가해 LLM에 SQL 생성을 요청합니다. **Action**에 따라 생성된 SQL을 보여주거나 실행 결과를 반환하며, `narrate`는 조회 결과를 LLM에 다시 전달하여 자연어로 설명합니다.
 
 그림에서는 간결한 표현을 위해 프로파일과 메타데이터를 하나의 박스로 묶었습니다. 프로파일은 처리 설정이며, 메타데이터·Annotation은 SQL 생성에 활용하는 데이터 구조와 업무 설명입니다.
 
