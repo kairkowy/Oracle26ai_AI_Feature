@@ -40,19 +40,7 @@ GitHub의 이름순 정렬에서도 학습 순서를 확인할 수 있도록 폴
 
 [SDG 예제](04_SelectAI_SDG/SyntheticDataGeneration_example.md)에서 대상 테이블과 생성 지침을 지정해 테스트 데이터를 생성합니다. Intro의 Profile·LLM 연결을 이해한 뒤 진행할 수 있으며, RAG나 Agent 실습을 먼저 완료할 필요는 없습니다. 생성 결과의 형식·건수·업무 규칙을 확인합니다.
 
-## 목적에 따라 바로 찾아보기
-
-| 목적 | 참고 문서 |
-| --- | --- |
-| Select AI가 어떻게 동작하는지 이해하기 | [소개·구조·처리 흐름](01_SelectAI_Intro_Lab/SelectAi_Intro.md) |
-| 실습 계정과 환경을 처음 구성하기 | [Intro 실습 순서와 준비 사항](01_SelectAI_Intro_Lab/README.md) |
-| 업무 용어를 SQL 조건과 JOIN에 반영하기 | [샘플 데이터와 Annotation](01_SelectAI_Intro_Lab/SampleDataConfig.md), [비교 예제](01_SelectAI_Intro_Lab/SelectAiExample.md) |
-| 로컬 문서를 검색해 근거 있는 응답 만들기 | [RAG 실습](02_SelectAI_RAG/SelectAI_RAG.md) |
-| 기존 벡터 테이블과 검색 함수를 도구로 연결하기 | [PL/SQL 벡터 검색 Agent](03_SelectAI_Agent/SAIAgent-plsql4vectorsearch-example.md) |
-| SQL·RAG 도구로 여러 단계의 요청 처리하기 | [Agent 문서 목록](03_SelectAI_Agent/README.md) |
-| 테스트 데이터 생성하기 | [SDG 예제](04_SelectAI_SDG/SyntheticDataGeneration_example.md) |
-
-## 공식 문서와 결과 확인
+## 공식 문서 및 유의사항
 
 [Oracle Select AI 사용자 가이드](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/index.html)와 [기능 지원표](https://docs.oracle.com/en/database/oracle/oracle-database/26/saicm/index.html)를 참고합니다. 온프레미스 패키지 설치는 [Oracle DBMS_CLOUD 설치 안내](https://docs.oracle.com/en/database/oracle/oracle-database/26/sutil/installing-dbms_cloud.html)를 기준으로 확인합니다.
 
