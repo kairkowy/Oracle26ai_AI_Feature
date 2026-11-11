@@ -10,6 +10,8 @@ Select AI의 기본 개념과 Ollama 기반 실습환경을 살펴보고, Annota
 | 4 | [SELECT AI 예제](SelectAiExample.md) | 단일 테이블·조인 질문, Annotation 미사용·사용 프로파일과 실행 구문 |
 | 5 | [SELECT AI 실습 계정 관리](lab_admin.md) | 관리자용: lab00~lab19 계정 생성, USERS 무제한 quota, CONNECT·RESOURCE, SH SELECT·패키지 실행 권한, 계정별 데이터 준비·클린징 |
 
+이 문서에서 사용하는 DB 버전은 Oracle EE 23.26.3.0.0 입니다. DB 설치 및 패치는 이 문서에서 다루지 않습니다.
 실습 PDB는 `orclpdb2`이고, 실습 계정은 `lab00`~`lab19`이며, Oracle 샘플 SH의 전체 9개 테이블을 복사하여 사용합니다. 예제 스크립트는 각 문서의 코드 블록에 포함되어 있습니다.
+사용자 툴은 SQL*PLUS 또는 Sql*Developer 등을 사용하십시오.
 
 그림 파일: [SELECT AI 구조도(SVG)](images/select-ai-architecture.svg)
