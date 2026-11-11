@@ -16,20 +16,6 @@ GitHub의 이름순 정렬에서도 학습 순서를 확인할 수 있도록 폴
 | 04 | `04_SelectAI_SDG` | [합성 데이터 생성](04_SelectAI_SDG/SyntheticDataGeneration_example.md) | 대상 테이블과 생성 지침을 바탕으로 테스트 데이터 생성 |
 | 99 | `99_SelectAI_ETC` | [Ollama·Nginx 프록시 구성](99_SelectAI_ETC/Ollama_Proxy_Config.md) | 로컬 LLM 연결을 위한 서비스·프록시 구성 참고 |
 
-## 실습 전 준비 사항
-
-이 자료는 **고객이 직접 관리하는 Oracle AI Database 26ai와 Ollama 기반 LLM 연결**을 중심으로 작성했습니다. 각 문서에 수록된 모델명·주소·스키마명·경로는 예시이므로 자신의 환경에 맞게 변경합니다.
-
-| 구분 | 준비·확인할 내용 | 참고 자료 |
-| --- | --- | --- |
-| DB 버전과 RU | Intro 실습의 기준 DB는 Oracle EE `23.26.3.0.0`입니다. NL2SQL·RAG·SDG·Agent의 지원 범위가 RU별로 다르므로 사용할 기능을 확인합니다. | [Oracle 공식 기능 지원표](https://docs.oracle.com/en/database/oracle/oracle-database/26/saicm/index.html) |
-| 실습 PDB와 계정 | 대상 PDB의 접속 정보를 준비하고 계정·테이블스페이스 quota·데이터 접근 권한을 설정합니다. Intro 예제는 `orclpdb2`, `lab00`~`lab19`를 사용합니다. | [실습 계정 관리](01_SelectAI_Intro_Lab/lab_admin.md) |
-| 패키지·네트워크 | DBMS_CLOUD 계열 패키지 설치, 실행 권한, Wallet, CDB·PDB ACL을 구성합니다. Agent에는 DBMS_CLOUD_AI_AGENT, 내장 RAG에는 Pipeline 관련 준비가 추가됩니다. | [Intro 환경 구성](01_SelectAI_Intro_Lab/SelectAiConfigure.md), [Agent 공통 환경 구성](03_SelectAI_Agent/OnPremises_Setup.md) |
-| LLM 연결 | DB 서버에서 접근 가능한 Ollama 또는 프록시와 사용할 모델을 준비합니다. 엔드포인트 경로는 RU와 프록시 구성에 따라 확인합니다. | [Ollama·Nginx 구성](99_SelectAI_ETC/Ollama_Proxy_Config.md) |
-| SQL 실행 도구 | SQL*Plus 또는 SQLcl을 권장합니다. SQL Developer에서는 스크립트 명령 지원과 실행 모드를 확인합니다. | 각 실습의 코드 블록 |
-
-원본 데이터·PDF·ONNX 모델·LLM 모델은 이 폴더에 포함되어 있지 않습니다. Intro는 SH 샘플 데이터를, RAG는 검색할 문서와 임베딩 모델을, Agent는 선택한 예제의 테이블·함수 등을 먼저 준비합니다.
-
 ## 권장 학습 순서
 
 ### 1. Select AI 기본 개념과 환경 준비
