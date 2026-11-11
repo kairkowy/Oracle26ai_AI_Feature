@@ -11,7 +11,7 @@ GitHub의 이름순 정렬에서도 학습 순서를 확인할 수 있도록 폴
 | 순서 | 폴더 | 시작 문서 | 학습 내용 |
 | --- | --- | --- | --- |
 | 01 | `01_SelectAI_Intro_Lab` | [Select AI 소개 및 실습](01_SelectAI_Intro_Lab/README.md) | 구조·Action·Profile, 온프레미스 환경 구성, SH 샘플 데이터, Annotation 미사용·사용 비교 |
-| 02 | `02_SelectAI_RAG` | [Select AI RAG](02_SelectAI_RAG/SelectAI_RAG.md) | 로컬 문서 위치 지정, 임베딩 모델과 Select AI 벡터 인덱스 구성, 검색·답변·출처 확인 |
+| 02 | `02_SelectAI_RAG` | [Select AI RAG 실습](02_SelectAI_RAG/SelectAI_RAG.md) | 로컬 문서 위치 지정, 임베딩 모델과 Select AI 벡터 인덱스 구성, 검색·답변·출처 확인 |
 | 03 | `03_SelectAI_Agent` | [Select AI Agent 소개 및 실습](03_SelectAI_Agent/README.md) | Agent·Tool·Task·Team 구성, SQL·RAG·PL/SQL 도구, HR JOIN과 통계 분석 |
 | 04 | `04_SelectAI_SDG` | [합성 데이터 생성](04_SelectAI_SDG/SyntheticDataGeneration_example.md) | 대상 테이블과 생성 지침을 바탕으로 테스트 데이터 생성 |
 | 99 | `99_SelectAI_ETC` | [Ollama·Nginx 프록시 구성](99_SelectAI_ETC/Ollama_Proxy_Config.md) | 로컬 LLM 연결을 위한 서비스·프록시 구성 참고 |
