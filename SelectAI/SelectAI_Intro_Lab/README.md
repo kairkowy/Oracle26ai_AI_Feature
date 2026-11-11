@@ -1,21 +1,80 @@
 # SELECT AI 소개 및 실습
 
-Select AI의 기본 개념과 Ollama 기반 실습환경을 살펴보고, Annotation 적용 전후의 SQL 생성 정확도를 비교하는 자료입니다. 
+Select AI의 기본 개념과 온프레미스 Ollama 기반 환경을 살펴보고, **동일한 자연어 질문에 대한 Annotation 미사용·사용 프로파일의 SQL과 조회 결과를 비교**하는 실습입니다. 단일 테이블 조회부터 여러 테이블을 연결하는 JOIN 질문까지 진행합니다.
 
-| 순서 | 문서 | 주요 내용 |
-|---|---|---|
-| 1 | [SELECT AI 소개](SelectAi_Intro.md) | 개념, 구조, 처리 흐름, 실행 방법, Action과 프로파일 주요 속성 |
-| 2 | [SELECT AI 환경구성](SelectAiConfigure.md) | DBMS_CLOUD 설치, Wallet 구성, CDB·PDB ACL 설정 |
-| 3 | [SELECT AI 샘플 데이터 구성](SampleDataConfig.md) | SH 스키마 구조, Annotation 등록·확인 |
-| 4 | [SELECT AI 예제](SelectAiExample.md) | 단일 테이블·조인 질문, Annotation 미사용·사용 프로파일과 실행 구문 |
-| 5 | [SELECT AI 실습 계정 관리](lab_admin.md) | 관리자용: lab00~lab19 계정 생성, USERS 무제한 quota, CONNECT·RESOURCE, SH SELECT·패키지 실행 권한, 계정별 데이터 준비·클린징 |
+## 문서 안내
 
-이 문서에서 사용하는 DB 버전은 Oracle EE 23.26.3.0.0 입니다. DB 설치 및 패치는 이 문서에서 다루지 않습니다.
+| 문서 | 주요 내용 |
+| --- | --- |
+| [SELECT AI 소개](SelectAi_Intro.md) | 개념, 구조, 처리 흐름, 실행 방법, Action과 프로파일 주요 속성 |
+| [실습 계정 관리](lab_admin.md) | 관리자용 계정 생성·권한 부여, 실습자용 데이터 복사·PK·FK 생성, 실습 종료 후 정리 |
+| [SELECT AI 환경 구성](SelectAiConfigure.md) | DBMS_CLOUD 설치, Wallet 구성, CDB·PDB ACL 설정 |
+| [샘플 데이터 구성](SampleDataConfig.md) | SH 데이터 구조와 업무 정의, Annotation 등록·확인 |
+| [SELECT AI 예제](SelectAiExample.md) | 실행 전 점검, Annotation 미사용·사용 프로파일 생성, 단일 테이블·JOIN 질문 비교 |
 
-실습 PDB는 `orclpdb2`이고, Oracle 샘플 SH의 전체 9개 테이블을 복사하여 사용합니다. 
+예제 스크립트는 각 문서의 코드 블록에 포함되어 있습니다. 문서 목록 전체를 차례로 실행하는 대신 아래의 **실습 순서**에 따라 필요한 단원을 진행합니다.
 
-예제 스크립트는 각 문서의 코드 블록에 포함되어 있습니다.
+## 실습 전 준비 사항
 
-사용자 툴은 SQL*PLUS 또는 Sql*Developer 등을 사용하십시오.
+이 자료의 실습 기준 DB 버전은 **Oracle EE 23.26.3.0.0**입니다. DB 설치와 패치 적용은 별도로 완료해야 합니다. 다른 RU를 사용한다면 해당 버전의 기능과 패키지 지원 여부를 확인합니다.
 
-그림 파일: [SELECT AI 구조도(SVG)](images/select-ai-architecture.svg)
+| 항목 | 준비·확인 사항 |
+| --- | --- |
+| 데이터베이스 | 실습할 CDB·PDB와 접속 정보를 준비합니다. 예제 PDB는 `orclpdb2`입니다. |
+| 관리자 접근 | 계정·권한·패키지·Wallet·ACL 설정을 수행할 DB 관리자와, DB 서버에서 설치·파일 작업을 수행할 Oracle OS 계정이 필요합니다. |
+| 원본 데이터 | 대상 PDB에 Oracle SH 샘플 스키마의 전체 9개 테이블과 데이터가 있어야 합니다. 각 실습 계정으로 복사하여 사용합니다. |
+| 실습 계정과 저장 공간 | `lab00`~`lab19` 중 배정받은 계정과 비밀번호를 확인합니다. 계정별 데이터 복사에 필요한 테이블스페이스와 quota를 준비합니다. 예제는 `USERS`를 사용합니다. |
+| LLM 서비스 | DB 서버에서 접근 가능한 Ollama 또는 프록시 주소와 실제 설치된 모델명을 확인합니다. 예제 호스트는 `service-ollama`이며, 엔드포인트 경로는 DB 버전과 프록시 구성에 맞게 조정합니다. |
+| 네트워크와 패키지 | DBMS_CLOUD·DBMS_CLOUD_AI 설치 상태, 실행 권한, Wallet과 CDB·PDB ACL을 확인합니다. OS에서 접속되는 것과 DB 계정의 호출 권한은 별도로 점검합니다. |
+| SQL 클라이언트 | SQL*Plus 또는 SQLcl을 권장합니다. SQL Developer에서는 `DEFINE`·`ACCEPT`·`EXEC` 등 스크립트 명령의 지원 여부를 확인하고 스크립트 실행 모드를 사용합니다. |
+
+환경 구성 문서의 PDB ACL 예제는 **단일 계정 `LAB00`**을 기준으로 합니다. 여러 계정으로 실습할 때는 관리자에게 각 실습 계정의 ACL과 패키지 실행 권한이 준비되었는지 확인합니다.
+
+## 실습 순서
+
+### 1. 기본 개념 확인
+
+[SELECT AI 소개](SelectAi_Intro.md)에서 자연어 질문이 SQL로 변환·실행되는 흐름, Profile과 Action의 역할, Annotation이 업무 의미를 보완하는 방식을 살펴봅니다.
+
+### 2. 관리자 환경 준비
+
+| 순서 | 수행할 작업 | 참고 문서 |
+| --- | --- | --- |
+| 1 | 대상 PDB와 SH 원본 데이터·테이블스페이스를 확인하고 실습 계정을 생성합니다. | [계정 생성과 기본 권한 부여](lab_admin.md#1-계정-생성과-기본-권한-부여) |
+| 2 | DBMS_CLOUD 패키지 설치, Wallet, 서비스 계정과 실습 계정의 ACL을 구성합니다. | [SELECT AI 환경 구성](SelectAiConfigure.md) |
+| 3 | 설치한 패키지의 실행 권한을 부여하고 계정·역할·quota·조회 권한을 확인합니다. | [패키지 실행 권한 부여](lab_admin.md#2-패키지-실행-권한-부여), [설정 확인](lab_admin.md#3-설정-확인) |
+
+환경을 이미 준비한 실습자는 관리자에게 완료 여부를 확인하고 다음 단계부터 진행합니다.
+
+### 3. 실습 계정의 데이터와 Annotation 준비
+
+실습 PDB에 **본인의 실습 계정으로 접속한 세션**에서 진행합니다.
+
+1. [계정별 데이터 준비](lab_admin.md#4-실습-계정별-데이터-준비)에서 SH 전체 9개 테이블을 복사하고 PK·FK를 생성합니다.
+2. [샘플 데이터 구성](SampleDataConfig.md)에서 테이블 관계와 업무 정의를 확인하고, 본인 소유 테이블에 Annotation을 등록합니다.
+3. 같은 문서의 등록 확인 절차로 Annotation이 적용되었는지 확인합니다.
+
+데이터 복사와 Annotation 등록은 최초 준비 시 수행합니다. 기존 테이블이나 Annotation이 있는 경우 해당 문서의 재실행 안내를 따릅니다.
+
+### 4. 프로파일 생성과 비교 실습
+
+[SELECT AI 예제](SelectAiExample.md)에서 다음 순서로 진행합니다.
+
+1. **실행 전 확인**: 현재 계정·PDB, ACL, 테이블별 데이터와 주요 컬럼 값을 확인합니다.
+2. **Part 1**: `annotations=false` 프로파일을 생성·적용하고, 단일 테이블 질문 2개와 JOIN 질문 2개를 실행합니다.
+3. **Part 2**: `annotations=true` 프로파일을 생성·적용하고, Part 1과 동일한 질문을 실행합니다.
+4. **결과 비교**: 생성 SQL과 조회 결과를 문서의 업무 정의·비교 SQL에 대조합니다. 조건, JOIN 키, 집계 기준과 금액 계산이 맞는지 확인합니다.
+
+Annotation은 Part 1 전에 등록해도 됩니다. Part 1은 등록된 Annotation을 LLM에 전달하지 않고, Part 2는 전달하므로 **같은 데이터에서 프로파일 설정에 따른 차이**를 비교합니다. SQL 실행 성공 여부뿐 아니라 업무 의미를 올바르게 해석했는지 확인합니다.
+
+### 5. 실습 종료 후 정리
+
+필요한 경우에만 [실습 데이터·테이블 클린징](lab_admin.md#5-실습-데이터테이블-클린징)을 수행합니다. 데이터만 삭제하는 방법과 테이블까지 삭제하는 방법을 구분하고, 실행 전 대상 계정을 확인합니다. 다시 실습하려면 데이터 준비와 Annotation 등록이 필요할 수 있습니다.
+
+## 실습에서 확인할 내용
+
+- 자연어 질문과 Action에 따라 생성 SQL과 실행 결과가 어떻게 달라지는지 확인합니다.
+- ‘야구용품’, ‘고가 상품’ 같은 업무 표현을 Annotation으로 제공했을 때 조건과 집계에 반영되는지 비교합니다.
+- 단일 테이블과 JOIN 질문에서 데이터 구조·제약조건·업무 정의의 역할을 구분합니다.
+
+[SELECT AI 구조도(SVG)](images/select-ai-architecture.svg) · [상위 문서: Select AI](../README.md)
