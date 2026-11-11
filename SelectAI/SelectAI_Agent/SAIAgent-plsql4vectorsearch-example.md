@@ -1,110 +1,90 @@
--------------------------------------------------------------------------------
-### PL/SQL Funtion(Vector Search)을 이용한 Select AI Agent 예제 
--------------------------------------------------------------------------------
+# Select AI Agent: PL/SQL 함수 기반 벡터 검색
 
-이 예제 샘플은 Select AI Agent에서 vector search 파이프라인 기능으로 임베딩된 벡터 테이블의 데이터를 Select AI Agent에 통합하는 방법을 제공하는 샘플임.
+> **온프레미스 기준**: Oracle AI Database 26ai의 지원 RU와 대상 PDB에서 실행합니다. 먼저 [공통 환경 구성](./OnPremises_Setup.md)에서 버전·패키지·권한·ACL·LLM 연결을 확인합니다. 엔드포인트·모델·스키마·테이블은 실제 환경에 맞게 변경합니다. 아래 SQL은 실습용이며, 생성된 객체를 정리한 후 재실행합니다.
 
-### 사전 준비물 
+기존 RAG_TBL_V 테이블을 검색하는 PL/SQL 함수를 Tool로 등록합니다. 내장 RAG 도구의 CREATE_VECTOR_INDEX 파이프라인을 새로 만드는 예제는 아닙니다.
 
-- 오라클26ai database(Onpremise)
-- 벡터 테이블 - Blob 또는 Varchar 컬럼에 있는 텍스트(또는 이미지)를 임베딩 한 데이블.
-- Ollama service : Nginx proxy(80 포트) 구성된 ollama service.
-- LLM model : llama3.2, gemma2 등 한글 지원 되는 LLM 모델.
+## 사전 준비
 
-**참고 링크**
+- 실습 스키마에 RAG_TBL_V가 있어야 하며, 아래 함수는 문서번호·청크ID·문서내용(CLOB)·벡터(VECTOR) 컬럼을 사용합니다. BLOB·이미지 저장소는 텍스트 추출과 컬럼 변환을 별도로 구현해야 합니다.
+- MULTILINGUAL_E5_SMALL 임베딩 모델이 같은 스키마에 적재되어 있어야 합니다. 문서 벡터와 질의 벡터의 모델·전처리·차원·거리 척도를 일치시킵니다. E5처럼 질의·문서 접두어를 사용하는 모델은 기존 적재 방식과 동일하게 적용합니다.
+- 사용자 정의 저장 함수를 생성할 CREATE PROCEDURE 권한이 필요합니다. 타 스키마 테이블·함수·모델을 사용하면 직접 권한과 스키마 한정 이름을 확인합니다.
 
-- 벡터 테이블(rag_tbl_v) : https://github.com/kairkowy/handon-labs-for-vector-search/blob/main/Configuration/similarity_search_config.sql
-- 임베딩 : https://github.com/kairkowy/handon-labs-for-vector-search/blob/main/similarity_search/2-1.RAG_DOC.ipynb
-- Ollama-Nginx 서비스 구성 : https://github.com/kairkowy/handon-labs-for-vector-search/blob/main/SelectAI/SelectAI_Ollama_Proxy_Config.md
+```sql
+SELECT column_name, data_type FROM user_tab_columns
+WHERE table_name = 'RAG_TBL_V' ORDER BY column_id;
+SELECT COUNT(*) AS chunk_count FROM RAG_TBL_V;
+SELECT model_name FROM user_mining_models
+WHERE model_name = 'MULTILINGUAL_E5_SMALL';
+```
 
+이 문서는 원본 문서와 벡터 데이터를 배포하지 않습니다. 기존 데이터 준비 예시는 [벡터 검색 실습 저장소](https://github.com/kairkowy/handon-labs-for-vector-search)에서 확인할 수 있으며, 위 컬럼 구조와 맞는지 점검합니다.
 
-### Agent 객체 생성
-
-#### 1. 벡터쿼리 Function 생성
+## 1. 벡터 검색 함수 생성
 
 ```sql
 -- PL/SQL Tool 생성 위한 PL/SQL 함수 생성.
 -- 사용자 입력 문장을 기반으로 벡터검색 결과 반환하는 함수임.
 
-##DROP FUNCTION vector_search
+-- CREATE OR REPLACE는 기존 함수를 교체합니다.
 
 CREATE OR REPLACE FUNCTION VECTOR_SEARCH (
     p_query IN VARCHAR2
 ) RETURN CLOB
+AUTHID DEFINER
 IS
     l_result CLOB;
 BEGIN
-    SELECT COALESCE(
-             XMLCAST(
-               XMLAGG(
-                 XMLELEMENT(
-                   e,
-                   '문서번호: ' || t."문서번호" || ', 청크ID: ' || t."청크ID" || CHR(10) ||
-                   REGEXP_REPLACE(
-                     REGEXP_REPLACE(
-                       DBMS_LOB.SUBSTR(t."문서내용", 1200, 1),
-                       '[[:cntrl:]]',' '
-                     ),
-                     '[^가-힣a-zA-Z0-9 ]',' '
-                   ) || CHR(10) ||
-                   '------------------------' || CHR(10)
-                 )
-               ) AS CLOB
-             ),
-             TO_CLOB('No matches.')
+    IF TRIM(p_query) IS NULL THEN
+      RETURN TO_CLOB('[]');
+    END IF;
+
+    SELECT JSON_ARRAYAGG(
+             JSON_OBJECT(
+               'document_id' VALUE t.doc_id,
+               'chunk_id' VALUE t.chunk_id,
+               'distance' VALUE t.distance_value,
+               'text' VALUE DBMS_LOB.SUBSTR(t.chunk_text, 2000, 1)
+               RETURNING CLOB
+             ) ORDER BY t.distance_value RETURNING CLOB
            )
     INTO l_result
     FROM (
-        SELECT v."문서번호",
-               v."청크ID",
-               v."문서내용"
-        FROM RAG_TBL_V v
-        ORDER BY VECTOR_DISTANCE(
-                 v."벡터",
-                 VECTOR_EMBEDDING(MULTILINGUAL_E5_SMALL USING p_query AS data),
-                 COSINE
-               )
-        FETCH FIRST 5 ROWS ONLY
+      SELECT v."문서번호" AS doc_id, v."청크ID" AS chunk_id,
+             v."문서내용" AS chunk_text,
+             VECTOR_DISTANCE(
+               v."벡터",
+               VECTOR_EMBEDDING(MULTILINGUAL_E5_SMALL USING p_query AS data),
+               COSINE
+             ) AS distance_value
+      FROM RAG_TBL_V v
+      WHERE v."벡터" IS NOT NULL
+      ORDER BY distance_value
+      FETCH FIRST 5 ROWS ONLY
     ) t;
 
-    RETURN l_result;
+    RETURN COALESCE(l_result, TO_CLOB('[]'));
 END;
 /
+SHOW ERRORS FUNCTION VECTOR_SEARCH
 
--- PL/SQL vector_search 함수 테스트
-
-ACCEPT user_q PROMPT '질문을 입력하세요:'
-
-공공기관 소프트웨어 분리발주 대상 사업 법적근거는?
-
-SET SERVEROUTPUT ON;
-
-DECLARE
-    v_result CLOB;
-BEGIN
-    v_result := VECTOR_SEARCH('&user_q');
-    DBMS_OUTPUT.PUT_LINE(DBMS_LOB.SUBSTR(v_result, 4000, 1));  -- 필요 시 4000 늘려서 여러 번 출력 가능
-END;
-/
-
+-- Agent를 연결하기 전에 함수 자체의 검색 결과를 확인합니다.
+SET LONG 20000
+SELECT VECTOR_SEARCH('문서의 주요 주제를 찾아줘') AS retrieved_chunks FROM dual;
 ```
 
-#### 2. Agent Tool 생성
+상위 5개를 반환하는 예제이므로 검색 결과가 있다는 사실만으로 관련성이 보장되지는 않습니다. 실제 자료에 맞는 거리 임계값을 정하려면 관련·무관 질의의 거리를 비교해 조정합니다. 위 함수는 문서 내용의 첫 2000자만 전달하므로 중요한 근거가 잘리지 않는지도 확인합니다.
+
+## 2. Agent Tool 생성
 
 ```sql
 -- PL/SQL 기반의 Agent Tool(VECTOR_SEARCH_TOOL) 생성
 
 BEGIN
-  DBMS_CLOUD_AI_AGENT.DROP_TOOL('VECTOR_SEARCH_TOOL');
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
-/
-
-BEGIN
   DBMS_CLOUD_AI_AGENT.CREATE_TOOL(
     tool_name   => 'VECTOR_SEARCH_TOOL',
     attributes  => '{
-      "instruction": "Use this tool only to retrieve top 5 relevant chunks from RAG_TBL_V. This tool requires exactly one parameter: query (string). Return only retrieved context text. Do not summarize. Do not provide the final answer.",
+      "instruction": "Use this tool only to retrieve top 5 relevant chunks from RAG_TBL_V. This tool requires exactly one parameter: p_query (string). Return only retrieved context text. Do not summarize. Do not provide the final answer.",
       "function": "VECTOR_SEARCH"
     }',
     description => 'Vector search context tool'
@@ -113,17 +93,12 @@ END;
 /
 
 ```
-***주의 : attribute에 들어가는 Instruction, role등은 영문으로 지정해야 정확한 실행이 가능함. 한글 지시어는 작동이 않될 수 있음.***
 
-#### 3. Task 생성
+지침은 이 예제에서 영어로 작성하고 최종 응답 언어는 한국어로 지정합니다. 실제 동작은 모델의 지침 준수·도구 호출 능력에 따라 확인합니다.
+
+## 3. Task 생성
 
 ```sql
-BEGIN
-  DBMS_CLOUD_AI_AGENT.DROP_TASK('INFO_SERVICE_TASK');
-EXCEPTION WHEN OTHERS THEN NULL;
-END;
-/
-
 DECLARE
   v_attributes CLOB;
 BEGIN
@@ -139,7 +114,8 @@ BEGIN
               '3) Additional checks. ' ||
                'If the requested information is not found in the context, explicitly state "Insufficient evidence". ' ||
               'The final answer must end with natural language sentences.',
-    'enable_human_tool' VALUE false    
+    'tools' VALUE JSON_ARRAY('VECTOR_SEARCH_TOOL'),
+    'enable_human_tool' VALUE false
   );
 
   DBMS_CLOUD_AI_AGENT.CREATE_TASK(
@@ -150,18 +126,10 @@ END;
 /
 ```
 
-#### 4. Agent 생성
+## 4. Agent 생성
 
 ```sql
 BEGIN
-  BEGIN
-  -- 있으면 삭제 (force => true)
-  DBMS_CLOUD_AI.DROP_PROFILE(
-    profile_name => 'INFOSERVICE_PROFILE',
-    force        => TRUE
-  );
-  END;
-
   -- 생성
   DBMS_CLOUD_AI.CREATE_PROFILE(
     profile_name => 'INFOSERVICE_PROFILE',
@@ -175,14 +143,7 @@ BEGIN
 END;
 /
 
-
 BEGIN
-  BEGIN
-    DBMS_CLOUD_AI_AGENT.DROP_AGENT('INFOSERVICE_AGENT', force => TRUE);
-  EXCEPTION
-    WHEN OTHERS THEN NULL;
-  END;
-
   DBMS_CLOUD_AI_AGENT.CREATE_AGENT(
     agent_name => 'INFOSERVICE_AGENT',
     attributes => q'{
@@ -196,16 +157,12 @@ END;
 /
 ```
 
-#### 5. Agent 팀 생성
+## 5. Agent 팀 생성
 
 ```sql
 BEGIN
-  -- 팀 제거
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_TEAM('RETURN_AGENCY', force => TRUE);
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
 
-  -- 팀 생성 
+  -- 팀 생성
   DBMS_CLOUD_AI_AGENT.CREATE_TEAM(
     team_name  => 'RETURN_AGENCY',
     attributes => '{
@@ -220,149 +177,37 @@ END;
 
 ```
 
-#### 6. Agent 실행
+## 6. 실행과 근거 확인
 
 ```sql
-
--- 1. 세션에 Agent team 설정
-
--- EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
-
 EXEC DBMS_CLOUD_AI_AGENT.SET_TEAM('RETURN_AGENCY');
-
--- 2. conversation ID 확인
-
-set serveroutput on
-
-CREATE OR REPLACE PACKAGE my_globals IS
-  l_team_cov_id varchar2(4000);
-END my_globals;
-/
--- Create conversation
-DECLARE
-  l_team_cov_id varchar2(4000);
-BEGIN
-  l_team_cov_id := DBMS_CLOUD_AI.create_conversation();
-  my_globals.l_team_cov_id := l_team_cov_id;
-  DBMS_OUTPUT.PUT_LINE('Created conversation with ID: ' || my_globals.l_team_cov_id);
-END;
-/
-
-Created conversation with ID: 4CA2DA2C-C33D-32E8-E063-187B000A14BB
-
--- 3. 대화형 Agent 실행
-set serveroutput on
-set timing on
-
-DECLARE
-  v_response CLOB;
-BEGIN
-  v_response := DBMS_CLOUD_AI_AGENT.RUN_TEAM(
-    team_name   => 'RETURN_AGENCY',
-    user_prompt => 'query 공공기관 소프트웨어 분리발주 대상사업 관련 법률근거는?',
-    params      => '{"conversation_id": "' || my_globals.l_team_cov_id || '"}'
-  );
-  DBMS_OUTPUT.PUT_LINE(DBMS_LOB.SUBSTR(v_response, 4000, 1));
-END;
-/
-
-공공기관 소프트웨어 분리발주 대상 사업 관련 법률 근거는 정보통신망법 제2조 제1항과 제10조 제1항입니다. 정보통신망법 제2조 제1항은 공공기관의 사업을
-정의하고, 제10조 제1항은 분리발주를 할 수 있는 사업을 규정하고 있습니다.
-
-경   과: 00:00:47.29
-
-```
-
-#### 7. 세션의 Agent team 종료(close)
-
-```sql
+SELECT DBMS_CLOUD_AI_AGENT.GET_TEAM() AS current_team FROM dual;
+SELECT AI AGENT 제공된 문서의 주요 내용을 문서번호와 청크ID를 포함해 요약해줘;
 EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
 ```
 
-#### 8. Select AI 실행 모니터링
+같은 질문의 함수 직접 호출 결과와 도구 이력을 비교합니다. 대화 ID를 재사용하는 RUN_TEAM 예제와 전체 CLOB 출력은 [공통 실행 안내](./OnPremises_Setup.md#4-실행과-대화-문맥)를 참고합니다.
+
+함수 직접 호출 결과의 document_id·chunk_id·text와 에이전트 답변을 비교합니다. 근거가 없으면 답변에서 근거 부족을 표시해야 합니다. 모델이 생성한 법령명·수치 등을 검증된 결과처럼 고정해 수록하지 않습니다.
+
+Tool 이력은 [공통 모니터링](./OnPremises_Setup.md#5-실행-이력과-문제-확인)에서 tool_name = 'VECTOR_SEARCH_TOOL'로 확인합니다. 함수는 DEFINER 권한으로 실행되므로 함수가 참조할 데이터 범위를 명확히 한정합니다.
+
+참고: [Oracle 사용자 정의 Tool 예제](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/examples-using-select-ai-agent1.html), [공식 Agent 패키지](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-agent-pl-sql-package.html).
+
+## 실습 객체 정리
+
+공유 객체가 아닌지 확인한 후 실행합니다. 원본 테이블은 삭제하지 않습니다.
 
 ```sql
-
--- Tool생성 확인
-set line 200
-col tool_name format a30
-col description format a40
-col attribute_name format a30
-col attribute_value format a100
-
-SELECT t.tool_name,
-       t.description,
-       t.status,
-       a.attribute_name,
-       DBMS_LOB.SUBSTR(a.attribute_value, 4000, 1) AS attribute_value
-FROM   user_ai_agent_tools t
-JOIN   user_ai_agent_tool_attributes a
-       USING (tool_id)
-WHERE t.TOOL_NAME = upper('VECTOR_SEARCH_TOOL')
-ORDER BY t.tool_name, a.attribute_name;
-
-TOOL_NAME                      DESCRIPTION                              STATUS                   ATTRIBUTE_NAME
------------------------------- ---------------------------------------- ------------------------ ------------------------------
-ATTRIBUTE_VALUE
-----------------------------------------------------------------------------------------------------
-VECTOR_SEARCH_TOOL             Vector search context tool               ENABLED                  function
-VECTOR_SEARCH
-
-VECTOR_SEARCH_TOOL             Vector search context tool               ENABLED                  instruction
-Use this tool only to retrieve top 5 relevant chunks from RAG_TBL_V. This tool requires exactly one
-parameter: query (string). Return only retrieved context text. Do not summarize. Do not provide the
-
--- Tool history 조회
-set line 300
-set pagesize 2000
-col INVOCATION_ID format a6
-col TOOL_NAME format a20
-col INPUT_PREVIEW format a40
-col OUTPUT format a40
-col tool_output format a40
-col START_DATE format a20
-col END_DATE format a20
-col TASK_NAME format a20
-
-SELECT
-  SUBSTR(INVOCATION_ID,1,4) as INVOCATION_ID,
-  TOOL_NAME,
-  SUBSTR(input, 1, 100)     AS input_preview,
-  SUBSTR(output, 1,100)     AS output,
-  SUBSTR(tool_output, 1, 100) AS tool_output,
-  start_date,
-  end_date
-FROM user_ai_agent_tool_history
-WHERE TOOL_NAME = 'VECTOR_SEARCH_TOOL'
-ORDER BY start_date DESC
-FETCH FIRST 3 ROWS ONLY;
-
--- Tool 호출 이력 조회
-
-SELECT 
-    TOOL_NAME,              -- 실행된 tool 이름
-    INPUT,                  -- tool에 전달된 입력 (CLOB)
-    LENGTH(OUTPUT) AS OUTPUT_LENGTH,  -- 출력 길이 (바이트)
-    TOOL_OUTPUT,            -- tool의 실행 결과 (CLOB)
-    START_DATE              -- tool 실행 시작 시각
-FROM USER_AI_AGENT_TOOL_HISTORY
-ORDER BY START_DATE DESC;
-
--- 최근 10개만 조회
-SELECT 
-    TOOL_NAME,
-    SUBSTR(INPUT, 1, 100) AS INPUT_PREVIEW,
-    LENGTH(OUTPUT) AS OUTPUT_LENGTH,
-    SUBSTR(TOOL_OUTPUT, 1, 200) AS OUTPUT_PREVIEW,
-    START_DATE,
-    END_DATE,
-    (END_DATE - START_DATE) * 24 * 3600 AS DURATION_SECONDS  -- 실행 시간 (초)
-FROM USER_AI_AGENT_TOOL_HISTORY
-ORDER BY START_DATE DESC
-FETCH FIRST 10 ROWS ONLY;
+BEGIN
+  DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
+  DBMS_CLOUD_AI_AGENT.DROP_TEAM('RETURN_AGENCY', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_TASK('INFO_SERVICE_TASK', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_TOOL('VECTOR_SEARCH_TOOL', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_AGENT('INFOSERVICE_AGENT', force => TRUE);
+  DBMS_CLOUD_AI.DROP_PROFILE('INFOSERVICE_PROFILE', force => TRUE);
+END;
+/
 ```
 
-#### 9. ollama 서비스 모니터링
-
-ollama 서비스를 디버그 모드로 실행하면 LLM과 Agent 사이의 API 응답 요청, 답변 상황을 모니터링하면 진행상황을 보다 직관적으로 모니터링 할 수 있음.
-
+VECTOR_SEARCH 함수, RAG_TBL_V 테이블과 임베딩 모델은 위 정리에서 삭제하지 않습니다.

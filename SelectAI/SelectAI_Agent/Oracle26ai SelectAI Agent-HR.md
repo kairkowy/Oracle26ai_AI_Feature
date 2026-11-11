@@ -1,21 +1,27 @@
-------------------------------------------------------
-### Oracle26ai Select AI Agent 샘플 예제 - JOIN 자동화 
-------------------------------------------------------
+# Select AI Agent: HR 데이터 조회와 JOIN
 
-#### SelectAI Agent 생성 및 실행 순서
+> **온프레미스 기준**: Oracle AI Database 26ai의 지원 RU와 대상 PDB에서 실행합니다. 먼저 [공통 환경 구성](./OnPremises_Setup.md)에서 버전·패키지·권한·ACL·LLM 연결을 확인합니다. 엔드포인트·모델·스키마·테이블은 실제 환경에 맞게 변경합니다. 아래 SQL은 실습용이며, 생성된 객체를 정리한 후 재실행합니다.
 
-  1.AI Agent 생성 - 2.Tool 생성 - 3.Task 생성 - 4.Team 생성 - 5.실행
+## 사전 준비
 
-  지원 Tools : SQL, RAG, WEBSEARCH, NOTIFICATION(EMAIL,SLACK)
+HR의 COUNTRIES·DEPARTMENTS·EMPLOYEES·JOBS·JOB_HISTORY·LOCATIONS·REGIONS 테이블과 PK·FK가 대상 PDB에 있어야 합니다. 예제는 LABADMIN으로 실행하며 관리자가 각 테이블의 SELECT 권한을 부여합니다. HR 자체 계정으로 실행해도 프로파일의 owner는 HR입니다.
 
-#### 테이블에 Annotation 추가
+```sql
+-- 관리자: 대상 PDB에서 실행
+GRANT SELECT ON HR.COUNTRIES TO LABADMIN;
+GRANT SELECT ON HR.DEPARTMENTS TO LABADMIN;
+GRANT SELECT ON HR.EMPLOYEES TO LABADMIN;
+GRANT SELECT ON HR.JOBS TO LABADMIN;
+GRANT SELECT ON HR.JOB_HISTORY TO LABADMIN;
+GRANT SELECT ON HR.LOCATIONS TO LABADMIN;
+GRANT SELECT ON HR.REGIONS TO LABADMIN;
+```
 
-NL2SQL이 쿼리 생성 정확도를 높이기 위하여 HR 샘플테이블에 Annotations을 추가함.
+프로파일의 comments는 COMMENT, annotations는 Annotation, constraints는 PK·FK 메타데이터의 활용 설정입니다. Annotation이 JOIN을 자동으로 보장하지 않으므로 실제 생성 SQL과 결과를 확인합니다. Annotation 작성 방식은 [샘플 데이터 구성](../SelectAI_Intro_Lab/SampleDataConfig.md)을 참고합니다. 해당 문서의 SH용 스크립트를 HR에 그대로 적용하지 않습니다.
 
-SELECT AI 샘플을 참고하세요.
+Annotation을 준비하지 않았다면 아래 annotations를 false로 바꾸고, 먼저 PK·FK와 명시적인 Task 지침을 이용해 실행합니다.
 
-
-#### 1. SQL Tool 생성
+## 1. SQL Tool 생성
 
 ```sql
 -- ==========================================================
@@ -26,30 +32,21 @@ SELECT AI 샘플을 참고하세요.
 -- ==========================================================
 
 BEGIN
-  -- 기존 프로파일 있으면 삭제 (없어도 무시)
-  BEGIN
-    DBMS_CLOUD_AI.DROP_PROFILE(
-      profile_name => 'HR_NL2SQL_PROFILE',
-      force        => TRUE
-    );
-  EXCEPTION
-    WHEN OTHERS THEN
-      NULL; 
-  END;
 
   -- 프로파일 생성
   DBMS_CLOUD_AI.CREATE_PROFILE(
     profile_name => 'HR_NL2SQL_PROFILE',
     attributes   => q'!
 {
-  "provider": "OPENAI",
   "provider_endpoint": "http://service-ollama",
   "model": "gemma3:12b",
-  "conversation": false,
+  "conversation": true,
   "max_tokens": 1024,
   "temperature": 0.0,
   "comments": false,
   "annotations": true,
+  "constraints": true,
+  "enforce_object_list": true,
   "object_list": [
     {"owner": "HR", "name": "COUNTRIES"},
     {"owner": "HR", "name": "DEPARTMENTS"},
@@ -67,27 +64,14 @@ BEGIN
 END;
 /
 
-**참고 : "comments":true 및 "annotations": true 옵션은 Annotation 정보를 NL2SQL이 참조할 수있계 활성화 하는 것을 의미함.*
+-- comments와 annotations는 서로 다른 메타데이터 설정입니다.
 
 -- ==========================================================
 -- 1.2 Tool (SQL) 생성
 -- Tool Name : HR_SQL
 -- ==========================================================
 
-BEGIN
-  -- 기존 툴 있으면 제거
-  BEGIN
-    DBMS_CLOUD_AI_AGENT.DROP_TOOL(
-      tool_name => 'HR_SQL',
-      force     => TRUE
-    );
-  EXCEPTION
-    WHEN OTHERS THEN
-      NULL;
-  END;
-END;
-/
--- 새 프로파일 생성
+-- HR SQL 도구 생성
 DECLARE
   v_attributes CLOB;
 BEGIN
@@ -117,21 +101,13 @@ END;
 /
 ```
 
-#### 2. Task 생성
+## 2. Task 생성
 
 ```sql
 -- ==================================================
 -- Task 생성
 -- Task Name : HR_SQL_TASK
 -- ===================================================
-
-BEGIN 
--- 기존 Task 있으면 제거
-    DBMS_CLOUD_AI_AGENT.DROP_TASK('HR_SQL_TASK', force => TRUE);
-    EXCEPTION 
-      WHEN OTHERS THEN NULL;
-END;
-/
 
 DECLARE
   v_attributes CLOB;
@@ -163,7 +139,7 @@ BEGIN
 
       '5. Exception Handling' || CHR(10) ||
       '- If no rows are returned, say: 데이터가 없습니다.' || CHR(10) ||
-      '- If the tool returns an error, briefly report the error in Korean.',
+      '- If the tool returns an error, briefly report the error in Korean. User question: {query}',
 
     'tools' VALUE JSON_ARRAY('HR_SQL'),
     'enable_human_tool' VALUE FALSE
@@ -178,7 +154,7 @@ END;
 
 ```
 
-#### 3. AI Agent 생성
+## 3. AI Agent 생성
 
 ```sql
 -- ================================================
@@ -187,16 +163,6 @@ END;
 
 BEGIN
   -- Agent에서 사용할 새 프로파일 기반 Agent 생성
-  BEGIN
-    DBMS_CLOUD_AI_AGENT.DROP_AGENT(
-      agent_name => 'HR_SQL_AGENT',
-      force      => TRUE
-    );
-  EXCEPTION
-    WHEN OTHERS THEN
-      NULL;
-  END;
-
   DBMS_CLOUD_AI_AGENT.CREATE_AGENT(
     agent_name => 'HR_SQL_AGENT',
     attributes => q'!
@@ -210,7 +176,7 @@ END;
 /
 ```
 
-#### 4. Agent Team 생성
+## 4. Agent Team 생성
 
 ```sql
 -- ======================================================
@@ -219,13 +185,8 @@ END;
 -- ======================================================
 
 BEGIN
--- 팀 제거
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_TEAM('HR_SQL_AGENCY', force => TRUE);
-  EXCEPTION 
-    WHEN OTHERS THEN NULL;
-  END;
 
--- 팀 생성 
+  -- 팀 생성
   DBMS_CLOUD_AI_AGENT.CREATE_TEAM(
     team_name  => 'HR_SQL_AGENCY',
     attributes => q'!
@@ -241,120 +202,49 @@ END;
 /
 ```
 
-#### 5. AI Agent 실행
+## 5. 실행과 결과 검증
 
 ```sql
--- ================================================
--- 5.1 세션 팀 활성화
--- 세션에 Agent temm 지정 후, 자연어로 실행
--- ================================================
-
--- 지금 세션에 어떤 팀이 설정됐는지 확인
-
+EXEC DBMS_CLOUD_AI_AGENT.SET_TEAM('HR_SQL_AGENCY');
 SELECT DBMS_CLOUD_AI_AGENT.GET_TEAM() AS current_team FROM dual;
-
-CURRENT_TEAM
-----------------------------------------------------
-"HR"."RETURNAGENCY"
-
--- 세션 팀 활성화
-EXECUTE DBMS_CLOUD_AI_AGENT.SET_TEAM('HR_SQL_AGENCY');
-
--- EXECUTE DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;    -- 세션팀 클리어
-
--- ================================================
--- 5.2 분석 쿼리 지시 (실행)
--- ================================================
-
-select ai agent '유럽(Europe) 지역 직원의 직무별로 평균 급여 계산해줘';
-
-RESPONSE
---------------------------------------------------------------------------------
-영업부서 직원의 평균 연봉은 89,558,823.53원입니다.
-
-
--- =====================================================================
--- 5.3. 대화형 Agent 실행 
--- =====================================================================
-
-set serveroutput on
-
-CREATE OR REPLACE PACKAGE my_globals IS
-  l_team_cov_id varchar2(4000);
-END my_globals;
-/
--- Create conversation
-DECLARE
-  l_team_cov_id varchar2(4000);
-BEGIN
--- conversation ID 확인
-  l_team_cov_id := DBMS_CLOUD_AI.create_conversation();
-  my_globals.l_team_cov_id := l_team_cov_id;
-  DBMS_OUTPUT.PUT_LINE('Created conversation with ID: ' || my_globals.l_team_cov_id);
-END;
-/
-
--- Created conversation with ID: 4CA59D6F-3B0C-43E2-E063-187B000A8712
-
--- 대화형 Agent 실행
-
-set serveroutput on
-set timing on
-
-DECLARE
-  v_response CLOB;
-BEGIN
-  v_response := DBMS_CLOUD_AI_AGENT.RUN_TEAM(
-    team_name   => 'HR_SQL_AGENCY',
-    user_prompt => 'query 유럽(Europe) 지역 직원의 직무별로 평균 급여 계산해줘',
-    params      => '{"conversation_id": "' || my_globals.l_team_cov_id || '"}'
-  );
-  DBMS_OUTPUT.PUT_LINE(DBMS_LOB.SUBSTR(v_response, 4000, 1));
-END;
-/
-
--- =====================================================================
--- 6. 세션 팀 반납
--- =====================================================================
-
+SELECT AI AGENT 유럽(Europe) 지역 직원의 직무별 평균 급여와 직원 수를 알려줘;
 EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
+```
 
--- =====================================================================
--- 7. 실행 모니터링
--- =====================================================================
+같은 질문의 원본 SQL 결과와 도구 이력을 비교합니다. 대화 ID를 재사용하는 RUN_TEAM 예제와 전체 CLOB 출력은 [공통 실행 안내](./OnPremises_Setup.md#4-실행과-대화-문맥)를 참고합니다.
 
-set line 300
-set pagesize 2000
-col INVOCATION_ID format a6
-col TOOL_NAME format a20
-col INPUT_PREVIEW format a40
-col OUTPUT format a40
-col tool_output format a40
-col START_DATE format a20
-col END_DATE format a20
-col TASK_NAME format a20
+다음 SQL과 비교해 직무별 그룹화, 유럽 지역 필터, 급여 단위를 확인합니다. HR의 SALARY 값을 임의의 원화나 연봉으로 환산하지 않습니다.
 
-SELECT
-  SUBSTR(INVOCATION_ID,1,4) as INVOCATION_ID,
-  TOOL_NAME,
-  SUBSTR(input, 1, 100)     AS input_preview,
-  SUBSTR(output, 1,100)     AS output,
-  SUBSTR(tool_output, 1, 100) AS tool_output,
-  start_date,
-  end_date
-FROM user_ai_agent_tool_history
-WHERE TOOL_NAME = 'HR_SQL'
-ORDER BY start_date DESC
-FETCH FIRST 3 ROWS ONLY;
+```sql
+SELECT j.job_title, COUNT(*) AS employee_count,
+       ROUND(AVG(e.salary), 2) AS avg_salary
+FROM HR.EMPLOYEES e
+JOIN HR.JOBS j ON j.job_id = e.job_id
+JOIN HR.DEPARTMENTS d ON d.department_id = e.department_id
+JOIN HR.LOCATIONS l ON l.location_id = d.location_id
+JOIN HR.COUNTRIES c ON c.country_id = l.country_id
+JOIN HR.REGIONS r ON r.region_id = c.region_id
+WHERE r.region_name = 'Europe'
+GROUP BY j.job_title
+ORDER BY j.job_title;
+```
 
-INVOCA TOOL_NAME            INPUT_PREVIEW                            OUTPUT                                   TOOL_OUTPUT                           START_DATE           END_DATE
------- -------------------- ---------------------------------------- ---------------------------------------- ---------------------------------------- -------------------- --------------------
-221    HR_SQL               { "TOOL_NAME": "HR_SQL", "QUERY": "What  {"status": "success", "result": "[            26/03/18 07:29:24.84 26/03/18 07:37:40.06
-                            is the average salary of employees in th   {                                           5110 +00:00           2399 +00:00
-                                                                      "AVG_SALARY" : 8955.88235294117647058
+실제 도구 호출과 입력·출력은 [공통 모니터링](./OnPremises_Setup.md#5-실행-이력과-문제-확인)에서 tool_name = 'HR_SQL'로 확인합니다.
 
+참고: [Oracle Agent 공식 예제](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/examples-using-select-ai-agent1.html), [메타데이터와 Annotation](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/data-and-metadata-concepts.html).
 
-SELECT dbms_lob.substr(output, 4000, 1) AS output_text
-FROM   user_ai_agent_tool_history
-WHERE  invocation_id = 221;
+## 실습 객체 정리
+
+공유 객체가 아닌지 확인한 후 실행합니다. 원본 테이블은 삭제하지 않습니다.
+
+```sql
+BEGIN
+  DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
+  DBMS_CLOUD_AI_AGENT.DROP_TEAM('HR_SQL_AGENCY', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_TASK('HR_SQL_TASK', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_TOOL('HR_SQL', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_AGENT('HR_SQL_AGENT', force => TRUE);
+  DBMS_CLOUD_AI.DROP_PROFILE('HR_NL2SQL_PROFILE', force => TRUE);
+END;
+/
 ```

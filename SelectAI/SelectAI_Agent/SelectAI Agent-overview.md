@@ -1,10 +1,12 @@
 # Oracl Select AI Agent 소개
 
+> **적용 환경**: 이 폴더는 온프레미스 Oracle AI Database 26ai를 대상으로 합니다. 사용 RU의 지원 범위와 패키지·권한·네트워크 준비는 [공통 환경 구성](./OnPremises_Setup.md)에서 확인합니다.
+
 ## Select AI Agent란?
 
 **Select AI Agent는 Oracle AI Database에서 AI 에이전트를 구성하고 실행하는 프레임워크**입니다. 사용자가 지정한 LLM을 활용해 자연어 요청을 해석하고, SQL 조회·문서 검색·PL/SQL 호출 등의 도구를 사용해 작업을 수행합니다.
 
-에이전트는 **ReAct(Reasoning and Acting)** 방식으로 요청을 판단하고, 도구를 실행하고, 결과를 확인하는 과정을 반복합니다. 에이전트와 작업·도구·팀은 `DBMS_CLOUD_AI_AGENT` 패키지로 생성하고 관리합니다. [Oracle 공식 개요](https://docs.oracle.com/en-us/iaas/autonomous-database-serverless/doc/about-select-ai-agents.html)
+에이전트는 **ReAct(Reasoning and Acting)** 방식으로 요청을 판단하고, 도구를 실행하고, 결과를 확인하는 과정을 반복합니다. 에이전트와 작업·도구·팀은 `DBMS_CLOUD_AI_AGENT` 패키지로 생성하고 관리합니다. [Oracle 공식 개요](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-agent-concepts.html)
 
 ## Select AI Agent 구조
 
@@ -50,9 +52,9 @@ flowchart TB
 | **AI Profile** | `DBMS_CLOUD_AI`로 관리하며 사용할 LLM과 연결 정보를 지정합니다. SQL·RAG 도구에는 별도의 프로파일을 지정할 수도 있습니다. |
 | **LLM** | 요청과 작업 지침을 바탕으로 다음 행동을 판단하고, 도구 실행 결과를 참고해 응답을 생성합니다. |
 
-객체별 설정은 [DBMS_CLOUD_AI_AGENT 공식 문서](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/dbms-cloud-ai-agent-package.html)를 참고합니다.
+객체별 설정은 [DBMS_CLOUD_AI_AGENT 공식 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-agent-pl-sql-package.html)를 참고합니다.
 
-LLM은 프로파일에 지정한 엔드포인트에서 동작합니다. 요청과 도구 실행 결과가 LLM에 전달될 수 있으며, 실제 데이터 조회와 PL/SQL 실행은 데이터베이스에서 처리합니다.
+LLM은 프로파일에 지정한 엔드포인트에서 동작합니다. 온프레미스 DB에 연결한 LLM은 내부 서버 또는 외부 서비스일 수 있습니다. 메타데이터와 요청, 도구 실행 결과가 해당 LLM에 전달될 수 있으며, 실제 데이터 조회와 PL/SQL 실행은 데이터베이스에서 처리합니다.
 
 ## Select AI Agent 실행 흐름
 
@@ -106,6 +108,17 @@ EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
 - **SELECT AI AGENT**: 지정한 팀으로 자연어 요청을 처리합니다.
 - **CLEAR_TEAM**: 세션의 팀 지정을 해제합니다. 생성된 팀 객체를 삭제하지는 않습니다.
 
-애플리케이션이나 PL/SQL에서는 `DBMS_CLOUD_AI_AGENT.RUN_TEAM`에 팀 이름과 요청을 전달할 수도 있습니다. [Oracle 패키지 문서](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/dbms-cloud-ai-agent-package.html)
+애플리케이션이나 PL/SQL에서는 `DBMS_CLOUD_AI_AGENT.RUN_TEAM`에 팀 이름과 요청을 전달할 수도 있습니다. [Oracle 패키지 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-agent-pl-sql-package.html)
 
 객체 생성부터 실행까지의 전체 스크립트는 [SQL·RAG 도구 기본 예제](./Oracle26ai%20SelectAI%20Agent.md)를 참고합니다. 다른 실습은 [문서 목록](./README.md)에서 확인할 수 있습니다.
+
+## 온프레미스에서 사용할 도구
+
+| 도구 | 구성과 사용 범위 |
+| --- | --- |
+| SQL | NL2SQL용 프로파일의 대상 테이블·뷰를 조회합니다. object_list와 DB 권한을 함께 설정합니다. |
+| RAG | Select AI 벡터 인덱스와 임베딩 모델을 이용해 문서 근거를 검색합니다. |
+| 사용자 정의 PL/SQL | function 속성에 등록한 저장 함수·프로시저를 호출합니다. 내장 tool_type = function을 지정하는 방식은 아닙니다. |
+| WEBSEARCH·NOTIFICATION | 지원 RU에서 사용 가능하지만 검색 제공자나 이메일·Slack의 별도 서비스·인증·네트워크 설정이 필요합니다. 폐쇄망에서 자동으로 이용할 수 있는 기능은 아닙니다. |
+
+MCP 서버는 이 예제의 필수 구성 요소가 아닙니다. 26ai 문서에 소개된 Autonomous AI Database MCP Server를 온프레미스에 기본 제공되는 서비스로 해석하지 않습니다. [공식 개념 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-agent-concepts.html)

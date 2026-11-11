@@ -1,36 +1,27 @@
-### Oracle26ai SelectAI Agent 
+# Select AI Agent: SQL·RAG 도구 실습
 
-Select AI Agent는 PL/SQL 툴을 사용하여 작업의 자동화를 구축하고, 자연어 상호 작용을 통해 데이터에 대한 대화형 액세스를 활성화하고, 외부 서비스를 연결하는 데 사용할 수 있음.
+> **온프레미스 기준**: Oracle AI Database 26ai의 지원 RU와 대상 PDB에서 실행합니다. 먼저 [공통 환경 구성](./OnPremises_Setup.md)에서 버전·패키지·권한·ACL·LLM 연결을 확인합니다. 엔드포인트·모델·스키마·테이블은 실제 환경에 맞게 변경합니다. 아래 SQL은 실습용이며, 생성된 객체를 정리한 후 재실행합니다.
 
-#### SelectAI Agent 생성 및 실행 순서
+이 문서는 SQL 도구와 내장 RAG 도구를 각각 구성합니다. 공통 프로파일 설정은 [Oracle 제공자 안내](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-your-ai-provider-and-ai-models.html), 객체 API는 [26ai Agent 패키지 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-ai-agent-pl-sql-package.html)를 기준으로 합니다.
 
-  1.AI Agent 생성 - 2.Tool 생성 - 3.Task 생성 - 4.Team 생성 - 5.실행
+## 1. SQL 도구
 
-  지원 Tools : SQL, RAG, WEBSEARCH, NOTIFICATION(EMAIL,SLACK)
-
-
-#### 1. SQL 툴 사용 케이스
+먼저 LABADMIN의 TOUR_HIST_TBL_ENG 데이터가 준비되어 있어야 합니다. 이 문서는 원본 관광 데이터를 배포하지 않습니다. 데이터 소유자가 다르면 object_list와 아래 점검 SQL을 함께 변경합니다.
 
 ```sql
-GRANT EXECUTE on DBMS_CLOUD_AI_AGENT to labadmin;
-
+SELECT column_name, data_type FROM all_tab_columns
+WHERE owner = 'LABADMIN' AND table_name = 'TOUR_HIST_TBL_ENG'
+ORDER BY column_id;
+SELECT COUNT(*) AS row_count FROM LABADMIN.TOUR_HIST_TBL_ENG;
 ```
 
-1. AI Agent 생성
+### 1.1. AI Agent 생성
 
 ```sql
 
--- Agent에서 사용할 프로파일 정리 및 생성
+-- Agent용 프로파일 생성
 
 BEGIN
-  BEGIN
-  -- 있으면 삭제 (force => true)
-  DBMS_CLOUD_AI.DROP_PROFILE(
-    profile_name => 'AGENT_OLLAMA_PROFILE',
-    force        => TRUE
-  );
-  END;
-
   -- 생성
   DBMS_CLOUD_AI.CREATE_PROFILE(
     profile_name => 'AGENT_OLLAMA_PROFILE',
@@ -44,42 +35,26 @@ BEGIN
 END;
 /
 
--- Agent 정리 및 생성
+-- Agent 생성
 BEGIN
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_AGENT('SQL_TOOL_AGENT', force => TRUE); 
-        EXCEPTION WHEN OTHERS THEN NULL; 
-  END;
-
   DBMS_CLOUD_AI_AGENT.CREATE_AGENT(
     agent_name => 'SQL_TOOL_AGENT',
     attributes => '{
       "profile_name": "AGENT_OLLAMA_PROFILE",
-      "role": "You are an experienced customer agent who deals with customers return request."
+      "role": "You are a database data analysis assistant. Use the assigned tools and answer in Korean."
     }'
   );
 END;
 /
 ```
 
-2. Tool 생성
-
-- 지원 되는 툴 : SQL, RAG, WEBSEARCH, NOTIFICATION(EMAIL,SLACK)
+### 1.2. Tool 생성
 
 ```sql
 
--- SQL tool을 위한 프로타일 생성(테이블 리스트)
+-- SQL 도구용 프로파일 생성
 
 BEGIN
-  -- 기존 프로파일 있으면 삭제 (없어도 무시)
-  BEGIN
-    DBMS_CLOUD_AI.DROP_PROFILE(
-      profile_name => 'NL2SQL_PROFILE',
-      force        => TRUE
-    );
-  EXCEPTION
-    WHEN OTHERS THEN
-      NULL; 
-  END;
 
   -- 프로파일 생성
   DBMS_CLOUD_AI.CREATE_PROFILE(
@@ -88,21 +63,17 @@ BEGIN
       "provider_endpoint": "http://service-ollama",
       "model": "qwen2.5-coder:7b",
       "conversation": false,
+      "enforce_object_list": true,
       "object_list": [
-        {"owner": "LABADMIN", "name": "TOUR_HIST_TBL_ENG"},
-        {"owner": "LABADMIN", "name": "DOC_STORE"}
-      ]    
+        {"owner": "LABADMIN", "name": "TOUR_HIST_TBL_ENG"}
+      ]
     }');
 END;
 /
 
--- TOUR_HIST_TBL
--- TOUR_HIST_TBL_ENG
 -- SQL 툴 생성
 
 BEGIN
-  -- 있으면 제거(없으면 에러날 수 있으니 예외 무시)
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_TOOL('SQL'); EXCEPTION WHEN OTHERS THEN NULL; END;
 
   DBMS_CLOUD_AI_AGENT.CREATE_TOOL(
     tool_name  => 'SQL',
@@ -114,37 +85,29 @@ END;
 
 ```
 
-3. Task 생성
+### 1.3. Task 생성
 
 ```sql
 BEGIN
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_TASK('SQL_ONLY_TASK', force => TRUE);
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-
   DBMS_CLOUD_AI_AGENT.CREATE_TASK(
     task_name  => 'SQL_ONLY_TASK',
     attributes => '{
       "tools": ["SQL"],
-      "instruction": "사용자 질문에 대해 DB의 TOUR_HIST_TBL_ENG 테이블을 SQL로 조회해서 답하세요. User question: {query}.",
-      "enable_human_tool": true
+      "instruction": "Use SQL to query TOUR_HIST_TBL_ENG for the user request: {query}. Answer in Korean using only the query result. Report errors or missing data without guessing.",
+      "enable_human_tool": false
     }'
   );
 END;
 /
 ```
 
-4. Team 생성
+### 1.4. Team 생성
 
 ```sql
 
 BEGIN
-  -- 팀 제거
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_TEAM('RETURNAGENCY', force => TRUE);
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
 
-  -- 팀 생성 
+  -- 팀 생성
   DBMS_CLOUD_AI_AGENT.CREATE_TEAM(
     team_name  => 'RETURNAGENCY',
     attributes => '{
@@ -159,88 +122,55 @@ END;
 
 ```
 
-5. AI Agent 실행
+### 1.5. AI Agent 실행
 
 ```sql
-
--- 세션에 팀 지정 후, 자연어로 실행
-EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
-
 EXEC DBMS_CLOUD_AI_AGENT.SET_TEAM('RETURNAGENCY');
-
--- 지금 세션에 어떤 팀이 설정됐는지 확인
 SELECT DBMS_CLOUD_AI_AGENT.GET_TEAM() AS current_team FROM dual;
-CURRENT_TEAM
-----------------------------------------------------
-"LABADMIN"."RETURNAGENCY"
-
-
-select ai agent tour_hist_tbl_eng 테이블의 컬럼명 출력해줘;
-
-RESPONSE
-----------------------------------------------------------
-The column names of the `TOUR_HIST_TBL_ENG` table are:
-- EXE_MONTH
-- TOUR_TYPE
-- CLASS_A
-- CLASS_B
-- TERRITORY_NAME
-- GENDER
-- CLASS_AGE
-- CARD_TR_AMOUNT
-- CARD_TR_CNT
-- CARD_PER_AMOUNT
-
-select ai agent '건당이용금액 중에서 제일 많은 금액 순으로 5개 출력해줘.';
-
-RESPONSE
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-The top 5 most expensive tours based on the total amount paid per person are:
-
-1. EXE_MONTH: 16-Aug, TOUR_TYPE: 내국인 관광객, CLASS_A: 제주시, CLASS_B: 용담2동, TERRITORY_NAME: 기념품 점, GENDER: 여, CLASS_AGE: 20대, CARD_TR_AMOUNT: 64277700, CARD_TR_CNT: 2543, CARD_PER_AMOUNT:
- 25276
-2. EXE_MONTH: 15-Aug, TOUR_TYPE: 내국인 관광객, CLASS_A: 제주시, CLASS_B: 용담2동, TERRITORY_NAME: 기념품 점, GENDER: 여, CLASS_AGE: 30대, CARD_TR_AMOUNT: 63835780, CARD_TR_CNT: 2357, CARD_PER_AMOUNT:
- 27083
-3. EXE_MONTH: 16-Jul, TOUR_TYPE: 내국인 관광객, CLASS_A: 제주시, CLASS_B: 용담2동, TERRITORY_NAME: 기념품 점, GENDER: 여, CLASS_AGE: 20대, CARD_TR_AMOUNT: 61323000, CARD_TR_CNT: 2574, CARD_PER_AMOUNT:
- 23824
-4. EXE_MONTH: 15-Apr, TOUR_TYPE: 내국인 관광객, CLASS_A: 제주시, CLASS_B: 용담2동, TERRITORY_NAME: 농축수산품, GENDER: 남, CLASS_AGE: 50대, CARD_TR_AMOUNT: 59866370, CARD_TR_CNT: 694, CARD_PER_AMOUNT:
- 86263
-5. EXE_MONTH: 14-Nov, TOUR_TYPE: 내국인 관광객, CLASS_A: 제주시, CLASS_B: 용담2동, TERRITORY_NAME: 농축수산품, GENDER: 남, CLASS_AGE: 50대, CARD_TR_AMOUNT: 59840560, CARD_TR_CNT: 715, CARD_PER_AMOUNT:
- 83693
-
-select ai agent '카드 이용금액을 남, 여로 구분해서 합계를 내주세요';
-
-RESPONSE
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-남성의 카드 이용금액 합계는 2,571,491,0191이고, 여성의 카드 이용금액 합계는 2,288,827,1083입니다.
-
-
-select ai agent '카드 이용금액을 나이대별로 통계를 내주세요';
-RESPONSE
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-The total card utilization amount by age group is as follows:
-
-- 30대: 14,856,286,866
-- 40대: 14,370,117,286
-- 50대: 11,976,816,069
-- 20대: 7,399,961,053
+SELECT AI AGENT 카드 이용금액을 성별로 구분해 합계를 알려줘;
+EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
 ```
 
+같은 질문의 원본 SQL 결과와 도구 이력을 비교합니다. 대화 ID를 재사용하는 RUN_TEAM 예제와 전체 CLOB 출력은 [공통 실행 안내](./OnPremises_Setup.md#4-실행과-대화-문맥)를 참고합니다.
 
+```sql
+-- 에이전트 결과 비교용 SQL. 실제 컬럼 정의와 금액 단위를 먼저 확인합니다.
+SELECT gender, SUM(card_tr_amount) AS total_amount
+FROM LABADMIN.TOUR_HIST_TBL_ENG
+GROUP BY gender
+ORDER BY gender;
+```
 
-#### 2. RAG 툴 사용 케이스
+## 2. 내장 RAG 도구
 
+내장 RAG는 문서 적재·청크 분할·임베딩·검색을 위한 Select AI 벡터 인덱스를 생성합니다. 기존 벡터 테이블을 함수로 검색하는 예제와 구분합니다.
+
+관리자가 대상 PDB에 디렉터리를 만들고 권한을 부여합니다. PDF는 DB 서버의 실제 경로에 두고 Oracle OS 계정이 읽을 수 있어야 합니다. 파일명은 영문·숫자 등 단일 바이트 문자로 준비합니다.
+
+```sql
+CREATE DIRECTORY DOC_DIR AS '/home/oracle/labs/data/docs/rag';
+GRANT READ, WRITE ON DIRECTORY DOC_DIR TO LABADMIN;
+```
+
+MULTILINGUAL_E5_SMALL 모델을 먼저 적재하고, 실습 계정에서 다음을 확인합니다. 아래 차원 384는 해당 모델을 전제로 한 값이며 다른 모델이면 변경합니다.
+
+```sql
+SELECT model_name FROM user_mining_models
+WHERE model_name = 'MULTILINGUAL_E5_SMALL';
+SELECT VECTOR_DIMENSION_COUNT(
+  VECTOR_EMBEDDING(MULTILINGUAL_E5_SMALL USING '검색 테스트' AS data)
+) AS dimensions FROM dual;
+```
+
+임베딩 모델 준비와 파일 위치 형식은 [공식 RAG 예제](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/use-retrieval-augmented-generation-and-vectors.html)를 참고합니다. Pipeline 실행 권한과 테이블스페이스 quota는 공통 환경 구성에서 준비합니다.
+
+### 2.1. 프로파일·Agent·벡터 인덱스 생성
 
 ```sql
 
 -- 프로파일 생성
 
 BEGIN
-  BEGIN
-    DBMS_CLOUD_AI.DROP_PROFILE('SAIAGENT_RAG_PROFILE', force => TRUE);
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-
   DBMS_CLOUD_AI.CREATE_PROFILE(
     profile_name => 'SAIAGENT_RAG_PROFILE',
     attributes   => '{
@@ -259,43 +189,31 @@ END;
 
 EXEC DBMS_CLOUD_AI.SET_PROFILE('SAIAGENT_RAG_PROFILE');
 
-
--- Agent 정리 및 생성
+-- Agent 생성
 BEGIN
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_AGENT('SAIAGENT_RAG', force => TRUE); 
-        EXCEPTION WHEN OTHERS THEN NULL; 
-  END;
-
   DBMS_CLOUD_AI_AGENT.CREATE_AGENT(
     agent_name => 'SAIAGENT_RAG',
     attributes => '{
       "profile_name": "SAIAGENT_RAG_PROFILE",
-      "role": "You are an experienced customer agent who deals with customers return request."
+      "role": "You are a document retrieval assistant. Use only retrieved evidence and answer in Korean."
     }'
   );
 END;
 /
 
-
 BEGIN
-  -- 기존 인덱스 있으면 삭제
-  BEGIN
-    DBMS_CLOUD_AI.DROP_VECTOR_INDEX(
-      index_name   => 'SAIAGENT_RAG_IDX',
-      include_data => TRUE,
-      force        => TRUE
-    );
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
+
   -- 벡터 인덱스 생성
   DBMS_CLOUD_AI.CREATE_VECTOR_INDEX(
     index_name => 'SAIAGENT_RAG_IDX',
+    wait_for_completion => TRUE,
     attributes        => '{
           "vector_db_provider": "oracle",
           "location": "DOC_DIR:*.pdf",
           "profile_name": "SAIAGENT_RAG_PROFILE",
           "vector_dimension": 384,
           "vector_distance_metric": "cosine",
+          "pipeline_name": "SAIAGENT_RAG_PIPELINE",
           "chunk_size":700,
           "chunk_overlap":50,
           "match_limit" : 5
@@ -304,29 +222,21 @@ BEGIN
 END;
 /
 
-select * from tab where tname like 'VECTOR$SAIAGENT_RAG_IDX%' or tname like 'PIPELINE%';
+-- 적재 파이프라인 완료를 기다린 뒤 검색합니다.
+SELECT index_name, status FROM user_cloud_vector_indexes
+WHERE index_name = 'SAIAGENT_RAG_IDX';
 
-TNAME                                                                            TABTYPE               CLUSTERID
--------------------------------------------------------------------------------- -------------------- ----------
-VECTOR$SAIAGENT_RAG_IDX$74699_74706_0$IVF_FLAT_CENTROIDS                         TABLE
-VECTOR$SAIAGENT_RAG_IDX$74699_74706_0$IVF_FLAT_CENTROID_PARTITIONS               TABLE
-PIPELINE$6$64_STATUS                                                             TABLE
-PIPELINE$15$92_STATUS                                                             TABLE
+SELECT pipeline_name, status, start_date, end_date, error_message
+FROM user_cloud_pipeline_history
+WHERE pipeline_name = 'SAIAGENT_RAG_PIPELINE'
+ORDER BY start_date DESC;
 
-select name, status, error_message from PIPELINE$15$92_STATUS;
+```
 
-NAME                           STATUS                         ERROR_MESSAGE
------------------------------- ------------------------------ ------------------------------
-SPRi_AI_202404.pdf             COMPLETED
-software_order.pdf             COMPLETED
+### 2.2. Tool·Task·Team 생성과 실행
 
-EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
-
+```sql
 BEGIN
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_TOOL('SAIAGENT_RAG_TOOL'); 
-    EXCEPTION WHEN OTHERS THEN NULL; 
-  END;
-
   DBMS_CLOUD_AI_AGENT.CREATE_TOOL(
     tool_name  => 'SAIAGENT_RAG_TOOL',
     attributes => '{"tool_type": "RAG",
@@ -335,32 +245,20 @@ BEGIN
 END;
 /
 
-
 BEGIN
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_TASK('VSEARCH_TASK', force => TRUE);
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-
-    DBMS_CLOUD_AI_AGENT.CREATE_TASK(
+  DBMS_CLOUD_AI_AGENT.CREATE_TASK(
       task_name =>'VSEARCH_TASK',
       attributes => '{"instruction": "반드시 RAG 도구 결과(문서 근거)만 사용해서 답변하세요. 근거가 없으면 \"제공된 문서(DOC_DIR)에서 근거를 찾지 못했습니다\"라고만 답하고, 일반 지식으로 추측하지 마세요. User question: {query}",
         "tools": ["SAIAGENT_RAG_TOOL"],
-         "enable_human_tool" : "false"
+         "enable_human_tool": false
        }'
     );
 END;
 /
 
--- 1. instruction에 명확한 가이드 중요
--- 2. enable_human_tool 옵션에서 사람 개입없다면 false 값 권고
-
 BEGIN
-  -- 팀 제거
-  BEGIN DBMS_CLOUD_AI_AGENT.DROP_TEAM('RETURNAGENCY_RAG', force => TRUE);
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
 
-  -- 팀 생성 
+  -- 팀 생성
   DBMS_CLOUD_AI_AGENT.CREATE_TEAM(
     team_name  => 'RETURNAGENCY_RAG',
     attributes => '{
@@ -373,90 +271,63 @@ BEGIN
 END;
 /
 
-
 EXEC DBMS_CLOUD_AI_AGENT.SET_TEAM('RETURNAGENCY_RAG');
 
-
-SELECT AI AGENT 공공기관 소프트웨어 분리발주 대상사업에는 어떤 것들이 있나요?;
-
-RESPONSE
---------------------------------------------------------------------------------
-공공기관이 소프트웨어를 분리발주하는 경우에 대한 세부적인 대상 및 방법 등은 정의
-되어 있습니다. 분리발주 대상 사업은 총 사업 규모가 5억원 이상인 소프트웨어 사업
-을 분리발주 대상 사업으로 합니다.
+SELECT AI AGENT 제공된 문서의 주요 내용을 출처와 함께 요약해줘;
 ```
 
-
-문제 추적
+인덱스 생성은 기본적으로 비동기이므로 위 예제는 wait_for_completion을 TRUE로 설정했습니다. 완료 후에도 실제 문서가 검색되는지 확인합니다.
 
 ```sql
-
--- 모델 응답 확인 방법
-
 EXEC DBMS_CLOUD_AI.SET_PROFILE('SAIAGENT_RAG_PROFILE');
+SELECT AI RUNSQL 문서의 주요 주제를 찾아줘;
+SELECT AI NARRATE 제공된 문서의 주요 내용을 출처와 함께 요약해줘;
+EXEC DBMS_CLOUD_AI.CLEAR_PROFILE;
+EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
+```
 
-SELECT AI CHAT 'ping';
+검색 청크와 최종 답변을 비교합니다. 문서 근거를 찾지 못하면 일반 지식으로 보충하도록 지침을 완화하기보다 적재·검색·모델 응답을 각각 점검합니다. 실행 이력은 [공통 문제 확인](./OnPremises_Setup.md#5-실행-이력과-문제-확인)을 사용합니다. 내부 PIPELINE$ 테이블명과 과거 실행 ID는 환경마다 달라 예제에 고정하지 않습니다.
 
-RESPONSE
----------------
-Pong!
+## 실습 객체 정리
 
+공유 객체가 아닌지 확인한 후 실행합니다. 원본 테이블은 삭제하지 않습니다.
 
--- 최근 팀 실행 상태 확인
+```sql
+BEGIN
+  DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
+  DBMS_CLOUD_AI_AGENT.DROP_TEAM('RETURNAGENCY', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_TASK('SQL_ONLY_TASK', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_TOOL('SQL', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_AGENT('SQL_TOOL_AGENT', force => TRUE);
+  DBMS_CLOUD_AI.DROP_PROFILE('NL2SQL_PROFILE', force => TRUE);
+  DBMS_CLOUD_AI.DROP_PROFILE('AGENT_OLLAMA_PROFILE', force => TRUE);
+END;
+/
+```
 
-select TEAM_EXEC_ID, TEAM_NAME, STATE from user_ai_agent_team_history
-where TEAM_NAME = 'RETURNAGENCY_RAG' and state = 'RUNNING';
+### RAG 에이전트 정리
 
-TEAM_EXEC_ID                                       TEAM_NAME                      STATE
--------------------------------------------------- ------------------------------ --------------------
-4B366B0F-D95F-2681-E063-187B000ABF32               RETURNAGENCY_RAG               RUNNING
+공유 객체가 아닌지 확인한 후 실행합니다. 원본 테이블은 삭제하지 않습니다.
 
+```sql
+BEGIN
+  DBMS_CLOUD_AI.CLEAR_PROFILE;
+  DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
+  DBMS_CLOUD_AI_AGENT.DROP_TEAM('RETURNAGENCY_RAG', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_TASK('VSEARCH_TASK', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_TOOL('SAIAGENT_RAG_TOOL', force => TRUE);
+  DBMS_CLOUD_AI_AGENT.DROP_AGENT('SAIAGENT_RAG', force => TRUE);
+END;
+/
+```
 
--- 특정 team_exec_id에 대해 task/tool 레벨도 확인
+RAG 벡터 데이터까지 제거하려는 경우에만 다음을 추가 실행합니다. 검색 원본 PDF 파일은 삭제하지 않습니다.
 
-SELECT TEAM_EXEC_ID, TEAM_NAME, STATE
-FROM   user_ai_agent_task_history
-WHERE  team_exec_id = '4B366B0F-D982-2681-E063-187B000ABF32'
-ORDER  BY start_date DESC;
-
-TEAM_EXEC_ID                                       TEAM_NAME                      STATE
--------------------------------------------------- ------------------------------ --------------------
-4B366B0F-D95F-2681-E063-187B000ABF32               RETURNAGENCY_RAG               RUNNING
-
-
-SELECT INVOCATION_ID, TEAM_EXEC_ID, AGENT_NAME, TOOL_NAME, TASK_NAME, OUTPUT
-FROM   user_ai_agent_tool_history
-WHERE  team_exec_id = '4B3822DE-5E64-4505-E063-187B000AD895'
-ORDER  BY start_date DESC;
-
-INVOCATION_ID TEAM_EXEC_ID                                       AGENT_NAME                     TOOL_NAME            TASK_NAME                      OUTPUT
-------------- -------------------------------------------------- ------------------------------ -------------------- ------------------------------ --------------------------------------------------------------------------------
-           64 4B366B0F-D956-2681-E063-187B000ABF32               SAIAGENT_RAG                   SAIAGENT_RAG_TOOL    VSEARCH_TASK                   {"status": "success", "result": "{"status": "error", "message": "Error from RA
-                                                                                                                                                    G
-
--- 에러 메시지 상세 확인
-
-SELECT dbms_lob.substr(output, 4000, 1) AS out_1
-FROM   user_ai_agent_tool_history
-WHERE  invocation_id = 71;
-
-OUT_1
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-{"status": "success", "result": "{"status": "error", "message": "Error from RAG search tool: ORA-20000: Sorry, unfortunately the response for your natural language prompt was not generated using the sources of your data. Here is some more information to help you further:
-
-분리발주는 공공기관이 소프트웨어를 분리하여 발주하는 제도입니다. 이는 일괄발주와 달리 SW구매만을 별도로 분리하여 발주하고, 평가·선정, 계약, 사업관리 등을 실시하는 것을 의미합니다.
-
-1. **분리발주 대상 사업**: 총 사업 규모가 5억원 이상인"}"}
-
-
--- 파이프라인이 실제로 문서를 인제스트했는지
-
-SELECT pipeline_name, status, start_date, end_date, error_message
-FROM   user_cloud_pipeline_history
-ORDER  BY start_date DESC
-FETCH FIRST 20 ROWS ONLY;
-
-SELECT COUNT(*) FROM PIPELINE$12$87_STATUS;
-
-
+```sql
+BEGIN
+  DBMS_CLOUD_AI.DROP_VECTOR_INDEX(
+    index_name => 'SAIAGENT_RAG_IDX', include_data => TRUE, force => TRUE);
+  DBMS_CLOUD_AI.DROP_PROFILE('SAIAGENT_RAG_PROFILE', force => TRUE);
+END;
+/
 ```
