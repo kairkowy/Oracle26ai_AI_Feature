@@ -17,7 +17,7 @@ GRANT SELECT ON HR.LOCATIONS TO LABADMIN;
 GRANT SELECT ON HR.REGIONS TO LABADMIN;
 ```
 
-프로파일의 comments는 COMMENT, annotations는 Annotation, constraints는 PK·FK 메타데이터의 활용 설정입니다. Annotation이 JOIN을 자동으로 보장하지 않으므로 실제 생성 SQL과 결과를 확인합니다. Annotation 작성 방식은 [샘플 데이터 구성](../SelectAI_Intro_Lab/SampleDataConfig.md)을 참고합니다. 해당 문서의 SH용 스크립트를 HR에 그대로 적용하지 않습니다.
+프로파일의 comments는 COMMENT, annotations는 Annotation, constraints는 PK·FK 메타데이터의 활용 설정입니다. Annotation이 JOIN을 자동으로 보장하지 않으므로 실제 생성 SQL과 결과를 확인합니다. Annotation 작성 방식은 [샘플 데이터 구성](../01_SelectAI_Intro_Lab/SampleDataConfig.md)을 참고합니다. 해당 문서의 SH용 스크립트를 HR에 그대로 적용하지 않습니다.
 
 Annotation을 준비하지 않았다면 아래 annotations를 false로 바꾸고, 먼저 PK·FK와 명시적인 Task 지침을 이용해 실행합니다.
 

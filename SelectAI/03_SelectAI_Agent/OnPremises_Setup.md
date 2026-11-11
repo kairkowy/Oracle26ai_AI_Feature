@@ -46,7 +46,7 @@ ORDER BY package_name, object_name, overload, sequence;
 
 ## 2. 패키지 설치와 계정 권한
 
-관리자는 [기존 환경 구성 안내](../SelectAI_Intro_Lab/SelectAiConfigure.md)를 참고해 설치·Wallet·ACL을 준비합니다. 설치 근거는 [Oracle DBMS_CLOUD 설치 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/sutil/installing-dbms_cloud.html)입니다. Oracle Home의 `catclouduser.sql`과 `dbms_cloud_install.sql`을 `catcon.pl`로 실행하고, 설치 로그와 대상 PDB의 패키지 상태를 확인합니다. 새 DBMS_CLOUD 배포가 포함된 RU 적용 후에는 공식 절차에 따라 설치 스크립트를 다시 실행합니다.
+관리자는 [기존 환경 구성 안내](../01_SelectAI_Intro_Lab/SelectAiConfigure.md)를 참고해 설치·Wallet·ACL을 준비합니다. 설치 근거는 [Oracle DBMS_CLOUD 설치 문서](https://docs.oracle.com/en/database/oracle/oracle-database/26/sutil/installing-dbms_cloud.html)입니다. Oracle Home의 `catclouduser.sql`과 `dbms_cloud_install.sql`을 `catcon.pl`로 실행하고, 설치 로그와 대상 PDB의 패키지 상태를 확인합니다. 새 DBMS_CLOUD 배포가 포함된 RU 적용 후에는 공식 절차에 따라 설치 스크립트를 다시 실행합니다.
 
 다음은 이미 생성된 실습 계정 `LABADMIN`의 예입니다. 관리자가 **대상 PDB**에서 실행하며, 계정명과 테이블스페이스는 실제 환경에 맞게 변경합니다.
 
@@ -75,7 +75,7 @@ GRANT CREATE MINING MODEL TO LABADMIN;
 
 이 폴더의 프로파일은 Oracle의 OpenAI 호환 제공자 안내에 따라 `provider_endpoint`와 `model`을 지정하고, `provider`는 함께 지정하지 않습니다. 기본 URL에 `/v1/chat/completions`를 붙이지 않습니다. 기존 프록시가 URL을 재작성한다면 실제 전달 경로도 확인합니다. 기존 환경 구성 문서의 /v1 주소 예시보다 이 폴더의 기본 URL 설정을 우선 적용하고, 사용 RU의 호출 경로를 확인합니다. 이 원칙은 [제공자 선택](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/select-your-ai-provider-and-ai-models.html)과 [AI 프로파일](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/manage-ai-profiles.html)에 근거합니다.
 
-관리자는 [기존 ACL·Wallet 설정](../SelectAI_Intro_Lab/SelectAiConfigure.md)에 따라 DBMS_CLOUD 서비스 계정과 실습 계정의 접근 경로를 구성합니다. ACL의 호스트에는 프로토콜과 경로를 넣지 않습니다. HTTPS는 인증서 체인을 신뢰하는 Wallet과 `SSL_WALLET` 데이터베이스 속성을 확인합니다. HTTP에서도 사용 RU의 DBMS_CLOUD 구성에 필요한 Wallet 설정을 점검합니다.
+관리자는 [기존 ACL·Wallet 설정](../01_SelectAI_Intro_Lab/SelectAiConfigure.md)에 따라 DBMS_CLOUD 서비스 계정과 실습 계정의 접근 경로를 구성합니다. ACL의 호스트에는 프로토콜과 경로를 넣지 않습니다. HTTPS는 인증서 체인을 신뢰하는 Wallet과 `SSL_WALLET` 데이터베이스 속성을 확인합니다. HTTP에서도 사용 RU의 DBMS_CLOUD 구성에 필요한 Wallet 설정을 점검합니다.
 
 인증 없는 내부 Ollama를 전제로 한 예제에는 `credential_name`을 넣지 않았습니다. 인증을 적용한 엔드포인트는 `DBMS_CLOUD.CREATE_CREDENTIAL`로 자격 증명을 등록하고 프로파일에서 참조합니다. 패키지 설정, 호스트 ACL, Wallet, 제공자 인증은 각각 확인합니다.
 

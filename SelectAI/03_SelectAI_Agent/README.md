@@ -27,7 +27,7 @@ Oracle Select AI Agent의 기본 개념과 구성 방법을 소개하고, SQL·R
 | 기존 벡터 테이블과 검색 함수를 재사용하기 | PL/SQL 함수 기반 벡터 검색 예제 |
 | 데이터의 합계·분포·순위 등을 분석하기 | 통계 분석 에이전트 예제 |
 
-Select AI를 처음 사용하는 경우 [Select AI 소개 및 실습](../SelectAI_Intro_Lab/README.md)에서 환경 구성과 데이터 준비를 먼저 진행합니다.
+Select AI를 처음 사용하는 경우 [Select AI 소개 및 실습](../01_SelectAI_Intro_Lab/README.md)에서 환경 구성과 데이터 준비를 먼저 진행합니다.
 
 ## 실습 전 준비
 
@@ -36,7 +36,7 @@ Select AI를 처음 사용하는 경우 [Select AI 소개 및 실습](../SelectA
 | 구분 | 확인 사항 |
 | --- | --- |
 | 데이터베이스와 권한 | 실습 환경에서 `DBMS_CLOUD_AI`와 `DBMS_CLOUD_AI_AGENT`를 사용할 수 있는지, 실습 계정에 필요한 패키지 실행 권한과 데이터 접근 권한이 있는지 확인합니다. |
-| LLM 연결 | 데이터베이스에서 Ollama 서비스에 접근할 수 있도록 네트워크와 프록시를 구성하고, 예제에서 사용할 모델을 준비합니다. [Ollama·Nginx 프록시 구성](../SelectAI_ETC/Ollama_Proxy_Config.md)을 참고합니다. |
+| LLM 연결 | 데이터베이스에서 Ollama 서비스에 접근할 수 있도록 네트워크와 프록시를 구성하고, 예제에서 사용할 모델을 준비합니다. [Ollama·Nginx 프록시 구성](../99_SelectAI_ETC/Ollama_Proxy_Config.md)을 참고합니다. |
 | 실행 도구 | SQL과 PL/SQL 스크립트를 실행할 수 있는 SQL 클라이언트를 준비합니다. |
 
 원본 관광 데이터, PDF, HR 샘플 스키마와 ONNX 모델은 이 폴더에 포함되어 있지 않습니다. 각 예제의 사전 준비에서 실제 데이터·모델의 존재와 구조를 확인합니다.
