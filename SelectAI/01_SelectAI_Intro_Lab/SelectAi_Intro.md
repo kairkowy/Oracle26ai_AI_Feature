@@ -23,48 +23,7 @@
 
 ## SELECT AI 처리 흐름
 
-```mermaid
----
-config:
-  sequence:
-    actorFontSize: 13
-    messageFontSize: 13
-    noteFontSize: 12
-    actorMargin: 30
-    width: 120
-    height: 40
-    diagramMarginX: 10
-    diagramMarginY: 10
-    boxMargin: 6
-    noteMargin: 6
-    messageMargin: 24
-    mirrorActors: true
----
-sequenceDiagram
-    participant U as 사용자 / 앱
-    participant S as Select AI
-    participant L as LLM
-    participant D as SQL 실행 엔진
-
-    Note over S: DBMS_CLOUD_AI 기반<br/>Profile(사용자지정) 적용<br/>메타데이터·Annotation 활용
-
-    U->>S: ① 자연어 질문 + Action
-    Note over S,L: 네트워크 ACL로 LLM 접근 제어
-    S->>L: ② 프롬프트 구성(질문 + 메타데이터)
-    L-->>S: ③ 생성된 SQL
-
-    opt runsql / narrate
-        S->>D: ④ SQL 실행
-        D-->>S: 조회 결과
-    end
-
-    opt narrate
-        S->>L: 조회 결과 해석 요청
-        L-->>S: 자연어 설명
-    end
-
-    S-->>U: ⑤ SQL / 조회 결과 / 자연어 응답
-```
+![SELECT AI 처리 흐름](images/select-ai-flow.svg)
 
 1. **질문 입력**: 사용자가 자연어 질문과 Action을 전달합니다.
 2. **프롬프트 구성**: Select AI가 Profile(사용자지정)을 바탕으로 대상 객체의 메타데이터를 질문에 추가해 LLM에 전달합니다. 설정에 따라 Comments와 Annotations도 포함하여 업무 의미를 보완합니다.

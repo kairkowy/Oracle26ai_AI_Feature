@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860" role="img" aria-labelledby="title desc">
+  <title id="title">SELECT AI 처리 흐름</title>
+  <desc id="desc">사용자와 앱, Select AI, LLM, SQL 실행 엔진 사이의 처리 순서. 자연어 질문을 입력하면 프로파일에 따라 메타데이터를 포함한 프롬프트를 구성하고 LLM이 SQL을 생성한다. runsql과 narrate는 SQL을 실행하며 narrate는 조회 결과를 LLM에 전달해 자연어 설명을 생성한다. 마지막으로 Action에 따라 SQL, 조회 결과 또는 자연어 응답을 반환한다.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1200" height="860" fill="#fff"/>
+  <g stroke="#cbd5e1" stroke-width="2" stroke-dasharray="6 6">
+    <path d="M140 82V784 M450 82V784 M790 82V784 M1070 82V784"/>
+  </g>
+  <g font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif" fill="#172b4d" text-anchor="middle">
+    <!-- 참여자: 상단과 하단에 같은 박스를 표시 -->
+    <g fill="#e8f0fe" stroke="#5179b8" stroke-width="2">
+      <rect x="35" y="22" width="210" height="60" rx="9"/>
+      <rect x="345" y="22" width="210" height="60" rx="9"/>
+      <rect x="685" y="22" width="210" height="60" rx="9"/>
+      <rect x="965" y="22" width="210" height="60" rx="9"/>
+      <rect x="35" y="784" width="210" height="60" rx="9"/>
+      <rect x="345" y="784" width="210" height="60" rx="9"/>
+      <rect x="685" y="784" width="210" height="60" rx="9"/>
+      <rect x="965" y="784" width="210" height="60" rx="9"/>
+    </g>
+    <g font-size="24" font-weight="700">
+      <text x="140" y="60">사용자 / 앱</text>
+      <text x="450" y="60">Select AI</text>
+      <text x="790" y="60">LLM</text>
+      <text x="1070" y="60">SQL 실행 엔진</text>
+      <text x="140" y="822">사용자 / 앱</text>
+      <text x="450" y="822">Select AI</text>
+      <text x="790" y="822">LLM</text>
+      <text x="1070" y="822">SQL 실행 엔진</text>
+    </g>
+    <rect x="296" y="105" width="308" height="96" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+    <g font-size="20">
+      <text x="450" y="132">DBMS_CLOUD_AI 기반</text>
+      <text x="450" y="160">Profile(사용자지정) 적용</text>
+      <text x="450" y="188">메타데이터·Annotation 활용</text>
+    </g>
+    <text x="295" y="231" font-size="22">① 자연어 질문 + Action</text>
+    <path d="M140 245H450" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <rect x="495" y="263" width="340" height="37" rx="7" fill="#fff7e6" stroke="#d6b46b"/>
+    <text x="665" y="288" font-size="19">네트워크 ACL로 LLM 접근 제어</text>
+    <text x="620" y="328" font-size="22">② 프롬프트 구성</text>
+    <text x="620" y="355" font-size="20">(질문 + 메타데이터)</text>
+    <path d="M450 370H790" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="620" y="403" font-size="22">③ 생성된 SQL</text>
+    <path d="M790 418H450" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+
+    <!-- Action별 선택 실행 구간 -->
+    <rect x="392" y="442" width="758" height="126" rx="8" fill="#f1f5f9" fill-opacity="0.88" stroke="#94a3b8"/>
+    <text x="412" y="468" text-anchor="start" font-size="19" font-weight="700">runsql / narrate</text>
+    <text x="760" y="492" font-size="22">④ SQL 실행</text>
+    <path d="M450 505H1070" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="760" y="538" font-size="21">조회 결과</text>
+    <path d="M1070 551H450" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+
+    <rect x="392" y="585" width="470" height="125" rx="8" fill="#edf6f0" fill-opacity="0.9" stroke="#88ad97"/>
+    <text x="412" y="611" text-anchor="start" font-size="19" font-weight="700">narrate</text>
+    <text x="620" y="634" font-size="21">조회 결과 해석 요청</text>
+    <path d="M450 647H790" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="620" y="680" font-size="21">자연어 설명</text>
+    <path d="M790 693H450" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+
+    <text x="295" y="738" font-size="21">⑤ SQL / 조회 결과 / 자연어 응답</text>
+    <path d="M450 755H140" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+  </g>
+</svg>
