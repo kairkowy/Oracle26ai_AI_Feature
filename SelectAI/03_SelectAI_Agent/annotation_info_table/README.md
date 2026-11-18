@@ -2,7 +2,7 @@
 
 사용자가 상품의 한글명이나 동의어로 질문하면 **실제 기준정보를 먼저 검색해 상품 ID를 확인하고, 그 ID를 조건으로 SQL을 생성**하는 실습입니다. 상품별 한글명과 동의어는 `DATA_STANDARD`의 데이터로 관리하며, 전체 목록을 Annotation에 나열하지 않습니다.
 
-**확인 상태: 2026-11-18.** `gemma2:9b` 일반 채팅과 실제 검색 도구 호출은 성공했습니다. 두 번의 전체 Agent 실행에서는 검색 도구가 각각 한 번 완료됐지만 작업 0이 종료되지 않아 SQL 작업으로 넘어가지 못했습니다. 짧은 LLM 요청이 반복됐으며 해당 DB SQL을 취소하자 Ollama 반복 로그가 멈췄습니다. CPU 추론 지연으로 완료를 기다리는 상태가 아니라 검색 이후 작업 종료를 진단하는 상태입니다. 아래 전체 시나리오는 최종 SQL 생성까지 성공한 예제가 아니며, 기대 SQL·JSON은 비교용입니다.
+**확인 상태: 2026-11-18.** `gemma2:9b` 일반 채팅과 실제 검색 도구 호출은 성공했습니다. 기존 전체 Agent에서는 검색 후 작업 종료가 진행되지 않고 짧은 LLM 요청이 반복됐습니다. 이후 최소 Agent에 명시적 대화 ID 처리를 적용한 실행은 상품 41 / Team shirt / 정가 44.99를 최종 응답으로 반환했습니다. 다음은 같은 대화 ID 처리와 단순화한 작업 지침을 전체 Agent에 적용해 SQL 생성까지 확인하는 단계입니다. 수정한 전체 실행은 아직 미검증이며 아래 기대 SQL은 비교용입니다.
 
 ## 1. 해결하려는 문제
 
@@ -86,13 +86,15 @@ GRANT CREATE PROCEDURE TO LAB;
 | [03_verify_lookup.sql](scripts/03_verify_lookup.sql) | LLM 없이 검색 함수 직접 검증 |
 | [02_create_agent.sql](scripts/02_create_agent.sql) | 프로파일·도구·Agent·작업·팀 생성 |
 | [install.sql](scripts/install.sql) | 사전 점검 → 함수 생성 → 함수 검증 → Agent 생성 순서로 실행 |
-| [04_run_agent.sql](scripts/04_run_agent.sql) | Agent 요청과 추가 질문 예제 |
+| [04_run_agent.sql](scripts/04_run_agent.sql) | 명시적 대화 ID로 전체 Agent에 SQL 생성 요청 한 번 제출 |
 | [05_check_profile.sql](scripts/05_check_profile.sql) | 기존 성공 프로파일과 endpoint/model 비교, HTTP 진단 명령 |
 | [06_update_connection.sql](scripts/06_update_connection.sql) | 재설치 없이 기존 프로파일의 연결 설정 수정 및 chat 검사 |
 | [07_monitor_agent.sql](scripts/07_monitor_agent.sql) | CPU 환경에서 실행 중인 작업·최근 종료 이력 확인 |
 | [08_create_minimal_agent.sql](scripts/08_create_minimal_agent.sql) | 진단용 Agent·작업·팀 생성. 검색 도구 하나만 연결 |
 | [09_run_minimal_agent.sql](scripts/09_run_minimal_agent.sql) | 동일 프로파일·모델로 최소 검색 Agent를 한 번 실행 |
 | [10_inspect_minimal_agent.sql](scripts/10_inspect_minimal_agent.sql) | 최소 실행의 작업·도구 이력과 DBA 세션 식별 방법 |
+| [11_update_full_agent.sql](scripts/11_update_full_agent.sql) | 기존 전체 Agent의 작업 종료·ID 전달·SQL 생성 지침 보완, 최소 작업의 근거 없는 통화 표기 금지 |
+| [12_inspect_full_agent.sql](scripts/12_inspect_full_agent.sql) | 최신 전체 실행의 두 작업 완료 및 검색→SQL 도구 호출 순서 확인 |
 
 ### 4.1 기준정보가 없는 경우만 준비
 
@@ -152,14 +154,11 @@ FROM dual;
 @scripts/04_run_agent.sql
 ```
 
-스크립트의 기본 요청은 다음과 같습니다.
+스크립트는 대화 ID를 생성·전달한 뒤 다음 질문을 한 번 제출합니다. 대화 ID 처리를 생략한 별도 `RUN_TEAM` 호출 대신 제공 실행 파일을 사용합니다.
 
-```sql
-SELECT DBMS_CLOUD_AI_AGENT.RUN_TEAM(
-  team_name => 'STD_PRODUCT_TEAM',
-  user_prompt => '남아공 크리켓 팀 유니폼의 상품 ID와 영문 상품명과 정가를 조회하는 SQL을 만들어줘. 실행하지 말고 SQL을 보여줘.'
-) AS response
-FROM dual;
+```text
+남아공 크리켓 팀 유니폼의 상품 ID와 영문 상품명과 정가를 조회하는 SQL을 만들어줘.
+실행하지 말고 SQL을 보여줘.
 ```
 
 기대하는 SQL의 핵심은 확인된 ID 필터입니다. 아래는 실제 Agent 실행 결과가 아닌 비교용 SQL입니다.
@@ -178,7 +177,7 @@ WHERE prod_id = 41;
 4. 미등록 표현과 모호한 표현에서는 SQL 도구를 호출하지 않고 설명·후보 확인을 반환하는지 확인합니다.
 5. 상품 129의 두 동의어를 함께 요청해도 매출이 두 배로 집계되지 않는지 확인합니다. 매출은 `SUM(SALES.AMOUNT_SOLD)`, 연도는 `TIMES.CALENDAR_YEAR`를 사용합니다.
 
-기본 요청은 SQL 생성이며 조회 실행이 아닙니다. SQL 도구 자체는 `runsql`도 지원하므로 작업 지침만으로 실행 권한을 차단한 구성은 아닙니다. 실제 실행을 요청한다면 DB 조회 권한과 실행 SQL을 별도로 검토합니다.
+기본 요청은 SQL 생성이며 조회 실행이 아닙니다. 현재 진단용 작업·도구 지침은 `showsql`만 사용하도록 제한합니다. SQL 도구 자체는 `runsql`도 지원하므로 지침이 DB 권한 수준의 실행 차단을 의미하지는 않습니다. 실제 조회 실행은 이번 검증에 포함하지 않습니다.
 
 `sequential`과 `input`은 작업 순서·출력 전달을 설정합니다. LLM이 검색 도구를 생략하거나 잘못된 ID를 전달하는 것을 코드로 차단하는 검증기는 아닙니다. 검색 선행을 반드시 강제해야 한다면 검색 성공·ID 일치를 검사하는 PL/SQL 실행 관문을 추가해야 합니다.
 
@@ -240,7 +239,8 @@ curl -i http://service-ollama/v1/models
 | 전체 Agent의 작업 전환 | 두 실행 모두 검색 작업 0에서 종료되지 않음. SQL 작업 1은 시작되지 않음 |
 | 반복 호출 발생원 | 관련 DB SQL을 취소하자 Ollama 반복 로그가 멈춘 것으로 확인 |
 | 최종 SQL 생성·정확성 | 작업 전환 문제로 미검증 |
-| 단일 작업 최소 Agent | 최초 실행에서 대화 ID NULL 오류 발생. 명시적 대화 생성·전달 수정본의 결과는 미검증 |
+| 단일 작업 최소 Agent | 최초 대화 ID NULL 오류 후 명시적 대화 생성·전달 수정본이 상품 41 / Team shirt / 정가 44.99를 반환한 것으로 사용자 확인 |
+| 대화 ID 처리·지침을 수정한 전체 Agent | 다음 검증 단계. SQL 생성까지의 성공 여부는 아직 미검증 |
 | 오탈자·미등록 의미 표현 검색 | 미구현 |
 
 - [Oracle Select AI Agent 시작 절차](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/getting-started-select-ai-agent.html)
@@ -298,6 +298,35 @@ STD_MIN_LOOKUP_TEAM
 3. 호출 성공 후에만 반환된 CLOB을 출력합니다. 실패 후 무조건 `PRINT`하지 않습니다.
 4. 성공·오류 시 이전 대화 ID와 클라이언트 식별자를 복원합니다. 진단을 위해 생성한 대화 이력은 삭제하지 않습니다.
 
-최소 Agent 객체가 이미 생성됐다면 생성 스크립트를 다시 실행하지 말고 수정된 실행 파일만 실행합니다. 이 변경은 기존 공유 프로파일의 `conversation` 속성이나 모델을 변경하지 않습니다. 수정 후에도 같은 NULL 오류가 나면 세션을 새로 연결해 한 번 확인하고, 오류와 생성된 대화 ID를 함께 보존해 패키지/RU의 대화 처리 문제를 조사합니다. 수정본의 실제 DB 성공은 아직 확인하지 않았습니다.
+최소 Agent 객체가 이미 생성됐다면 생성 스크립트를 다시 실행하지 말고 수정된 실행 파일만 실행합니다. 이 변경은 기존 공유 프로파일의 `conversation` 속성이나 모델을 변경하지 않습니다. 수정본의 최소 실행은 상품 41의 최종 응답을 반환한 것으로 확인됐습니다. 여러 구성을 함께 단순화했으므로 이 결과만으로 기존 반복 문제의 원인을 대화 ID 하나로 확정하지 않습니다.
+
+## 11. 다음 단계: 실제 상품 ID로 SQL 생성
+
+최소 Agent가 종료된 것을 확인한 뒤 기존 전체 Agent를 갱신합니다. 객체를 삭제하거나 재생성할 필요는 없습니다. 이 갱신 파일은 앞 절의 최소 Agent까지 설치된 환경을 대상으로 합니다.
+
+```sql
+@scripts/11_update_full_agent.sql
+@scripts/04_run_agent.sql
+```
+
+변경 사항은 다음과 같습니다.
+
+- 검색 작업은 각 표현을 한 번 조회하고 결과를 반환하면 즉시 종료하도록 단순화합니다. 다음 SQL 작업이 끝날 때까지 기다리지 않습니다.
+- SQL 작업은 앞 작업의 상품 ID와 원래 질문을 SQL 도구에 전달하고 `showsql` 결과를 반환합니다. SQL 도구 결과를 받은 뒤 무한 재시도하지 않습니다.
+- 전체 실행도 실제 대화 ID를 새로 생성하고 세션과 `RUN_TEAM.params`에 전달합니다. 호출 후에는 이전 대화 ID와 클라이언트 식별자를 복원합니다.
+- 모델·주소·기준정보는 변경하지 않습니다. 이번 검증은 SQL 생성만 요청합니다.
+- 도구 결과에 없는 통화 단위를 덧붙이지 않도록 지시합니다. 최소 Agent의 응답에는 `USD`가 붙었지만 검색 함수에는 통화 필드가 없으므로 해당 단위의 근거는 확인되지 않았습니다.
+
+기대 흐름은 검색 도구의 실제 상품 41 반환 → 검색 작업 종료 → SQL 도구 호출 → `PROD_ID = 41`로 제한하는 SQL 반환입니다. 기존의 영문 추측 `LIKE` 조건으로 되돌아가면 실패입니다.
+
+별도 세션에서 다음으로 확인합니다.
+
+```sql
+@scripts/12_inspect_full_agent.sql
+```
+
+최신 실행 ID의 작업 0과 1에 모두 완료 시각이 있고, 도구 이력에 검색 후 SQL 호출이 있으며, SQL 도구 입력과 출력이 실제 상품 ID를 유지하는지 확인합니다. 최종 답변에 상품 가격이 나온 것만으로 SQL 생성 성공으로 판정하지 않습니다.
+
+다시 빠른 LLM 호출이 반복되면 추가 실행하지 않습니다. DBA는 `CLIENT_IDENTIFIER = 'STD_FULL_PRODUCT_TEST'`인 현재 세션과 SQL을 확인한 후 해당 SQL만 취소할 수 있습니다. 스크립트는 자동 타임아웃이나 자동 취소를 설정하지 않습니다. 전체 수정본은 정적 검사만 완료했으며 실제 DB 실행 결과는 다음 검증에서 확인합니다.
 
 [상위 문서: Select AI Agent](../README.md)

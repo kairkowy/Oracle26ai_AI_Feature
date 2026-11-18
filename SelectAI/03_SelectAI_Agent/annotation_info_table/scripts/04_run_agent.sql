@@ -1,47 +1,80 @@
+-- Start only after the prior looping call is cancelled and Ollama logs have stopped.
+-- This makes one team request, not a retry loop. The Agent may still loop internally.
+-- There is no automatic timeout/cancellation configured by this script.
 SET DEFINE OFF
-SET LONG 1000000
-SET LONGCHUNKSIZE 100000
+SET SERVEROUTPUT ON
+SET LONG 100000
+SET LONGCHUNKSIZE 10000
 SET LINESIZE 200
-SET PAGESIZE 100
 SET SQLBLANKLINES ON
 
--- One live Agent run. Default task policy is SQL generation, not query execution.
-SELECT DBMS_CLOUD_AI_AGENT.RUN_TEAM(
-  team_name => 'STD_PRODUCT_TEAM',
-  user_prompt => '남아공 크리켓 팀 유니폼의 상품 ID와 영문 상품명과 정가를 조회하는 SQL을 만들어줘. 실행하지 말고 SQL을 보여줘.'
-) AS response FROM dual;
+SELECT SYSTIMESTAMP AS test_started FROM dual;
+-- Display the actual current model; do not change models during this control test.
+SELECT attribute_name, attribute_value
+FROM user_cloud_ai_profile_attributes
+WHERE profile_name = 'STD_PRODUCT_AGENT_PROFILE'
+AND LOWER(attribute_name) IN ('model','provider_endpoint');
 
--- Expected evidence: STD_SEARCH_PRODUCT called with the original Korean term,
--- actual lookup returns PROD_ID=41, then SQL constrains PRODUCTS.PROD_ID=41.
--- An English LIKE filter such as SOUTH AFRICA CRICKET TEAM is a failed test.
+DECLARE
+  l_previous_identifier VARCHAR2(64) := SYS_CONTEXT('USERENV','CLIENT_IDENTIFIER');
+  l_previous_conversation VARCHAR2(128) := DBMS_CLOUD_AI.GET_CONVERSATION_ID();
+  l_conversation_id VARCHAR2(128);
+  l_params JSON_OBJECT_T := JSON_OBJECT_T();
+  l_response CLOB;
+  l_piece VARCHAR2(32767);
+  l_pos PLS_INTEGER := 1;
 
--- Further runs (uncomment one at a time):
--- SELECT DBMS_CLOUD_AI_AGENT.RUN_TEAM(
---   team_name => 'STD_PRODUCT_TEAM',
---   user_prompt => '프로 메이플 배트 또는 프로 단풍나무 야구방망이의 연도별 매출액을 조회하는 SQL을 만들어줘. 실행하지 마.'
--- ) AS response FROM dual;
--- Expected: a deduplicated product restriction on 129, calendar_year and SUM(amount_sold).
+  PROCEDURE restore_context IS
+  BEGIN
+    IF l_previous_identifier IS NULL THEN
+      DBMS_SESSION.CLEAR_IDENTIFIER;
+    ELSE
+      DBMS_SESSION.SET_IDENTIFIER(l_previous_identifier);
+    END IF;
+    IF l_previous_conversation IS NULL THEN
+      DBMS_CLOUD_AI.CLEAR_CONVERSATION_ID;
+    ELSE
+      DBMS_CLOUD_AI.SET_CONVERSATION_ID(l_previous_conversation);
+    END IF;
+  END;
+BEGIN
+  DBMS_SESSION.SET_IDENTIFIER('STD_FULL_PRODUCT_TEST');
+  BEGIN
+    -- Create an actual conversation; SYS_GUID alone would not create its DB row.
+    -- Explicit title/description avoid LLM calls to generate conversation metadata.
+    l_conversation_id := DBMS_CLOUD_AI.CREATE_CONVERSATION(
+      attributes => '{"title":"Full product SQL generation test","description":"Two-task lookup followed by SQL generation test","conversation_length":10}'
+    );
+    IF l_conversation_id IS NULL THEN
+      RAISE_APPLICATION_ERROR(-20131, 'CREATE_CONVERSATION returned NULL.');
+    END IF;
+    DBMS_CLOUD_AI.SET_CONVERSATION_ID(l_conversation_id);
+    l_params.put('conversation_id', l_conversation_id);
+    DBMS_OUTPUT.PUT_LINE('CONVERSATION_ID=' || l_conversation_id);
 
--- SELECT DBMS_CLOUD_AI_AGENT.RUN_TEAM(
---   team_name => 'STD_PRODUCT_TEAM',
---   user_prompt => '존재하지않는테스트상품XYZ의 정가 조회 SQL을 만들어줘.'
--- ) AS response FROM dual;
--- Expected: lookup NOT_FOUND, no SQL tool call.
+    l_response := DBMS_CLOUD_AI_AGENT.RUN_TEAM(
+      team_name => 'STD_PRODUCT_TEAM',
+      user_prompt => '남아공 크리켓 팀 유니폼의 상품 ID와 영문 상품명과 정가를 조회하는 SQL을 만들어줘. 실행하지 말고 SQL을 보여줘.',
+      params => l_params.to_clob()
+    );
 
--- SELECT DBMS_CLOUD_AI_AGENT.RUN_TEAM(
---   team_name => 'STD_PRODUCT_TEAM',
---   user_prompt => 'Team shirt의 정가 조회 SQL을 만들어줘.'
--- ) AS response FROM dual;
--- Expected: six candidates and a clarification request, no SQL tool call.
-
--- Alternative interactive SQL interface (syntax depends on the installed release):
--- EXEC DBMS_CLOUD_AI_AGENT.SET_TEAM('STD_PRODUCT_TEAM');
--- SELECT AI agent 남아공 크리켓 팀 유니폼의 정가를 조회하는 SQL을 만들어줘;
--- EXEC DBMS_CLOUD_AI_AGENT.CLEAR_TEAM;
--- CLEAR_TEAM is necessary before returning to ordinary SELECT AI showsql/runsql.
-
--- Optional newer release history views: check 00_precheck.sql before querying.
--- DESC USER_AI_AGENT_TOOL_HISTORY
--- SELECT * FROM user_ai_agent_tool_history FETCH FIRST 20 ROWS ONLY;
--- DESC USER_AI_AGENT_TASK_HISTORY
--- SELECT * FROM user_ai_agent_task_history FETCH FIRST 20 ROWS ONLY;
+    -- Print only a successfully returned response, never an unassigned bind LOB.
+    IF l_response IS NULL THEN
+      DBMS_OUTPUT.PUT_LINE('RUN_TEAM returned NULL; inspect task history.');
+    ELSE
+      WHILE l_pos <= DBMS_LOB.GETLENGTH(l_response) LOOP
+        l_piece := DBMS_LOB.SUBSTR(l_response, 8000, l_pos);
+        DBMS_OUTPUT.PUT_LINE(l_piece);
+        l_pos := l_pos + LENGTH(l_piece);
+      END LOOP;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      restore_context;
+      RAISE;
+  END;
+  restore_context;
+END;
+/
+-- On error there is no unconditional PRINT and no success message.
+-- Inspect with 12_inspect_full_agent.sql from another session if needed.
