@@ -14,7 +14,7 @@ Oracle Select AI Agent의 기본 개념과 구성 방법을 소개하고, SQL·R
 | [HR 데이터 조회와 JOIN 예제](./Oracle26ai%20SelectAI%20Agent-HR.md) | HR 샘플 테이블의 Annotation을 활용한 자연어 조회와 여러 테이블 간 JOIN |
 | [PL/SQL 함수 기반 벡터 검색 예제](./SAIAgent-plsql4vectorsearch-example.md) | 기존 벡터 테이블을 검색하는 PL/SQL 함수를 도구로 등록하고, 검색 결과를 근거로 답변하는 에이전트 구성 |
 | [통계 분석 에이전트 예제](./SAIAgent-analytic-agent-example.md) | 관광객 카드 이용 이력에 대한 SQL 기반 집계·통계 분석과 실행 결과 확인 |
-| [상품 한글명·동의어 기준정보 검색](./annotation_info_table/README.md) | `DATA_STANDARD` 검색으로 상품 ID를 확인한 뒤 SQL을 생성하는 순차 Agent 시나리오. CPU 환경의 최종 응답은 검증 대기 |
+| [상품 한글명·동의어 기준정보 검색](./annotation_info_table/README.md) | `DATA_STANDARD` 검색 후 SQL 생성을 구성하는 순차 Agent. 검색 성공 후 작업 종료 반복을 진단하는 최소 구성 포함 |
 
 ## 권장 학습 순서
 

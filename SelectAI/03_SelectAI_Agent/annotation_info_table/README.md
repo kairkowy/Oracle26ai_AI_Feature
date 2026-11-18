@@ -2,7 +2,7 @@
 
 사용자가 상품의 한글명이나 동의어로 질문하면 **실제 기준정보를 먼저 검색해 상품 ID를 확인하고, 그 ID를 조건으로 SQL을 생성**하는 실습입니다. 상품별 한글명과 동의어는 `DATA_STANDARD`의 데이터로 관리하며, 전체 목록을 Annotation에 나열하지 않습니다.
 
-**확인 상태: 2026-11-18.** DB 서버에서 Ollama의 `gemma2:9b` 일반 채팅 요청이 HTTP 200으로 응답한 것을 확인했습니다. CPU 기반 환경에서 Agent 실행 결과는 대기 중이며, 최종 응답과 도구 실행 순서는 아직 검증하지 않았습니다. 이 문서의 기대 SQL과 JSON은 성공 결과를 설명하기 위한 예시입니다.
+**확인 상태: 2026-11-18.** `gemma2:9b` 일반 채팅과 실제 검색 도구 호출은 성공했습니다. 두 번의 전체 Agent 실행에서는 검색 도구가 각각 한 번 완료됐지만 작업 0이 종료되지 않아 SQL 작업으로 넘어가지 못했습니다. 짧은 LLM 요청이 반복됐으며 해당 DB SQL을 취소하자 Ollama 반복 로그가 멈췄습니다. CPU 추론 지연으로 완료를 기다리는 상태가 아니라 검색 이후 작업 종료를 진단하는 상태입니다. 아래 전체 시나리오는 최종 SQL 생성까지 성공한 예제가 아니며, 기대 SQL·JSON은 비교용입니다.
 
 ## 1. 해결하려는 문제
 
@@ -90,6 +90,9 @@ GRANT CREATE PROCEDURE TO LAB;
 | [05_check_profile.sql](scripts/05_check_profile.sql) | 기존 성공 프로파일과 endpoint/model 비교, HTTP 진단 명령 |
 | [06_update_connection.sql](scripts/06_update_connection.sql) | 재설치 없이 기존 프로파일의 연결 설정 수정 및 chat 검사 |
 | [07_monitor_agent.sql](scripts/07_monitor_agent.sql) | CPU 환경에서 실행 중인 작업·최근 종료 이력 확인 |
+| [08_create_minimal_agent.sql](scripts/08_create_minimal_agent.sql) | 진단용 Agent·작업·팀 생성. 검색 도구 하나만 연결 |
+| [09_run_minimal_agent.sql](scripts/09_run_minimal_agent.sql) | 동일 프로파일·모델로 최소 검색 Agent를 한 번 실행 |
+| [10_inspect_minimal_agent.sql](scripts/10_inspect_minimal_agent.sql) | 최소 실행의 작업·도구 이력과 DBA 세션 식별 방법 |
 
 ### 4.1 기준정보가 없는 경우만 준비
 
@@ -209,7 +212,7 @@ curl -i http://service-ollama/v1/chat/completions \
   -d '{"model":"gemma2:9b","messages":[{"role":"user","content":"Reply OK"}],"stream":false}'
 ```
 
-이는 해당 주소와 모델의 일반 채팅 성공을 확인한 것입니다. 최초 404의 원인이 모델명인지, 그 당시 프록시 상태인지까지 확정한 것은 아닙니다. 이후 CPU 환경에서 Agent 결과를 기다리는 상태이며 도구 호출 성공 여부는 별도로 확인해야 합니다.
+이는 해당 주소와 모델의 일반 채팅 성공을 확인한 것입니다. 최초 404의 원인이 모델명인지, 그 당시 프록시 상태인지까지 확정한 것은 아닙니다. 후속 Agent 실행에서는 실제 검색 도구가 성공했지만 첫 작업의 종료가 진행되지 않는 현상이 확인됐습니다. 아래 최소 구성으로 원인을 분리합니다.
 
 404가 나면 URL에서 `/v1`을 먼저 제거하지 말고 현재 프로파일의 모델명과 HTTP 응답 본문을 확인합니다. 없는 모델명도 404를 만들 수 있습니다.
 
@@ -233,8 +236,11 @@ curl -i http://service-ollama/v1/models
 | 제공 seed의 상품 ID 72개, 한글명·동의어 144개와 중복 여부 | 로컬 정적 검사 완료 |
 | 프로파일·도구·작업·팀 JSON 및 스크립트 연결 | 로컬 정적 검사 완료 |
 | DB 서버에서 `gemma2:9b` 일반 채팅 HTTP 요청 | 사용자 제공 응답으로 200 / OK 확인 |
-| 대상 DB의 검색 함수 직접 검증 결과 | 제공 검증 스크립트로 확인 필요 |
-| CPU 환경의 최종 Agent 응답·도구 순서·생성 SQL 정확성 | 실행 결과 대기 / 미검증 |
+| 대상 DB의 검색 도구 실행 | 사용자 제공 도구 이력에서 상품 41 매핑 성공 확인. 두 실행에서 각각 한 번 완료 |
+| 전체 Agent의 작업 전환 | 두 실행 모두 검색 작업 0에서 종료되지 않음. SQL 작업 1은 시작되지 않음 |
+| 반복 호출 발생원 | 관련 DB SQL을 취소하자 Ollama 반복 로그가 멈춘 것으로 확인 |
+| 최종 SQL 생성·정확성 | 작업 전환 문제로 미검증 |
+| 단일 작업 최소 Agent | 스크립트 제공. 대상 DB 실행 결과는 아직 미검증 |
 | 오탈자·미등록 의미 표현 검색 | 미구현 |
 
 - [Oracle Select AI Agent 시작 절차](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/getting-started-select-ai-agent.html)
@@ -242,5 +248,43 @@ curl -i http://service-ollama/v1/models
 - [사용자 정의 PL/SQL 도구와 순차 작업 예제](https://docs.oracle.com/en-us/iaas/autonomous-database-serverless/doc/examples-using-select-ai-agent.html)
 - [Ollama OpenAI 호환 API](https://docs.ollama.com/api/openai-compatibility)
 - [Oracle SH 원본 상품 데이터](https://github.com/oracle-samples/db-sample-schemas/blob/main/sales_history/sh_populate.sql)
+
+## 10. 검색 후 종료 문제를 분리하는 최소 Agent
+
+전체 시나리오에서 실제 도구 이력은 `STD_SEARCH_PRODUCT`가 약 16ms, 약 48ms에 각각 완료된 것을 보여줬습니다. 두 실행 모두 호출 횟수는 1회였고, 이후 첫 작업이 `RUNNING`으로 남았습니다. Ollama 접근 로그의 표본 80개는 요청당 평균 약 172ms로, 오래 걸리는 추론 한 번이 아닌 짧은 요청의 반복이었습니다.
+
+Scheduler 실행 목록이 비어 있어도 반복 요청을 보내는 SQL*Plus 세션은 살아 있었습니다. 해당 세션에서 실행 중인 SQL은 `prompt => NULL`과 바인드된 `params`를 받는 내부 `DBMS_CLOUD_AI.GENERATE` 호출이었습니다. 이 SQL 본문만으로 NULL prompt를 오류로 단정할 수는 없습니다. 실제로 해당 SQL을 취소하자 반복 요청이 멈췄습니다. 이력의 `RUNNING`만으로 현재 살아 있는 실행을 판단하지 않습니다.
+
+다음 실험은 **같은 프로파일·모델·검색 함수·도구**를 재사용하면서 작업 수와 역할 지침을 줄입니다. 기존 전체 Agent나 데이터를 수정하지 않습니다. SQL 생성 도구도 붙이지 않습니다.
+
+```text
+STD_MIN_LOOKUP_TEAM
+  └ STD_MIN_LOOKUP_AGENT / STD_MIN_LOOKUP_TASK
+       └ STD_SEARCH_PRODUCT → 기존 STD_AGENT_FIND_PRODUCT
+       └ 조회 결과를 최종 응답으로 반환하고 종료
+```
+
+이전 반복 실행이 취소되고 Ollama 로그가 멈춘 상태에서 진행합니다.
+
+```sql
+@scripts/08_create_minimal_agent.sql
+@scripts/09_run_minimal_agent.sql
+```
+
+생성 파일은 최초 한 번만 실행합니다. 실행 파일은 요청 한 번만 제출하며 내부 반복 횟수를 제한하거나 자동 취소하는 기능은 없습니다. 검색 성공 후에도 빠른 반복 호출이 계속되면 기다리거나 중복 실행하지 말고 다른 세션에서 확인합니다.
+
+```sql
+@scripts/10_inspect_minimal_agent.sql
+```
+
+| 관찰 결과 | 판단 |
+| --- | --- |
+| 검색 도구 1회 완료, 상품 41을 최종 응답으로 반환, 작업 종료 | 최소 구성에서 종료 가능. 기존 다단계 지침·작업 전달 경로를 다음 비교 대상으로 삼음 |
+| 검색 도구 1회 완료 후 동일하게 LLM 호출만 반복 | SQL 도구나 두 작업 연결 없이도 재현. 모델 후속 응답·프록시·프레임워크 처리 구간을 추가 조사 |
+| 검색 도구 호출 전부터 반복 | 도구 선택·호출 형식 구간을 조사 |
+
+최소 구성의 성공·실패만으로 특정 모델이나 Oracle 패키지의 결함을 확정하지 않습니다. 다음 조사에서는 실제 후속 요청·응답 본문과 설치 RU를 비교해야 합니다.
+
+실행 스크립트는 호출 중에만 `CLIENT_IDENTIFIER = 'STD_MIN_LOOKUP_TEST'`를 설정하고 종료 시 이전 값을 복원합니다. DBA는 이 식별자로 현재 세션을 찾아 SQL을 확인할 수 있습니다. 취소가 필요하면 현재 `SID`, `SERIAL#`, 인스턴스와 `SQL_ID`를 사용하며 과거 세션 번호를 재사용하지 않습니다. 명령은 검사 스크립트에 주석으로 제공하며 자동 실행하지 않습니다.
 
 [상위 문서: Select AI Agent](../README.md)
