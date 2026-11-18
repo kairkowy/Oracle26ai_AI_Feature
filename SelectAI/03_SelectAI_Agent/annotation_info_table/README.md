@@ -240,7 +240,7 @@ curl -i http://service-ollama/v1/models
 | 전체 Agent의 작업 전환 | 두 실행 모두 검색 작업 0에서 종료되지 않음. SQL 작업 1은 시작되지 않음 |
 | 반복 호출 발생원 | 관련 DB SQL을 취소하자 Ollama 반복 로그가 멈춘 것으로 확인 |
 | 최종 SQL 생성·정확성 | 작업 전환 문제로 미검증 |
-| 단일 작업 최소 Agent | 스크립트 제공. 대상 DB 실행 결과는 아직 미검증 |
+| 단일 작업 최소 Agent | 최초 실행에서 대화 ID NULL 오류 발생. 명시적 대화 생성·전달 수정본의 결과는 미검증 |
 | 오탈자·미등록 의미 표현 검색 | 미구현 |
 
 - [Oracle Select AI Agent 시작 절차](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/getting-started-select-ai-agent.html)
@@ -286,5 +286,18 @@ STD_MIN_LOOKUP_TEAM
 최소 구성의 성공·실패만으로 특정 모델이나 Oracle 패키지의 결함을 확정하지 않습니다. 다음 조사에서는 실제 후속 요청·응답 본문과 설치 RU를 비교해야 합니다.
 
 실행 스크립트는 호출 중에만 `CLIENT_IDENTIFIER = 'STD_MIN_LOOKUP_TEST'`를 설정하고 종료 시 이전 값을 복원합니다. DBA는 이 식별자로 현재 세션을 찾아 SQL을 확인할 수 있습니다. 취소가 필요하면 현재 `SID`, `SERIAL#`, 인스턴스와 `SQL_ID`를 사용하며 과거 세션 번호를 재사용하지 않습니다. 명령은 검사 스크립트에 주석으로 제공하며 자동 실행하지 않습니다.
+
+### 최소 실행에서 CONVERSATION_ID NULL 오류가 발생한 경우
+
+최초 최소 실행에서는 `DBMS_CLOUD_AI_CONVERSATION_PROMPT$.CONVERSATION_ID#`에 NULL을 삽입하려는 `ORA-01400`이 발생했습니다. 뒤의 `ORA-22275`는 실패 후 미할당 응답 LOB를 `PRINT`하던 과정에서 추가로 발생한 것으로 보입니다. 검색 후 반복 현상과는 별개의 대화 초기화 오류이며, 정확한 RU 내부 원인까지 확인한 것은 아닙니다.
+
+수정한 `09_run_minimal_agent.sql`은 다음 순서로 실행합니다.
+
+1. `DBMS_CLOUD_AI.CREATE_CONVERSATION`으로 실제 대화 ID를 생성합니다. 제목과 설명을 지정해 메타데이터 생성을 위한 추가 LLM 호출을 피합니다.
+2. 세션의 대화 ID를 설정하고 `RUN_TEAM(params => ...)`에도 동일한 ID를 명시합니다.
+3. 호출 성공 후에만 반환된 CLOB을 출력합니다. 실패 후 무조건 `PRINT`하지 않습니다.
+4. 성공·오류 시 이전 대화 ID와 클라이언트 식별자를 복원합니다. 진단을 위해 생성한 대화 이력은 삭제하지 않습니다.
+
+최소 Agent 객체가 이미 생성됐다면 생성 스크립트를 다시 실행하지 말고 수정된 실행 파일만 실행합니다. 이 변경은 기존 공유 프로파일의 `conversation` 속성이나 모델을 변경하지 않습니다. 수정 후에도 같은 NULL 오류가 나면 세션을 새로 연결해 한 번 확인하고, 오류와 생성된 대화 ID를 함께 보존해 패키지/RU의 대화 처리 문제를 조사합니다. 수정본의 실제 DB 성공은 아직 확인하지 않았습니다.
 
 [상위 문서: Select AI Agent](../README.md)
