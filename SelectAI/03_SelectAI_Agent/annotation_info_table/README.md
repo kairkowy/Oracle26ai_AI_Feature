@@ -2,7 +2,7 @@
 
 사용자가 상품의 한글명이나 동의어로 질문하면 **실제 기준정보를 먼저 검색해 상품 ID를 확인하고, 그 ID를 조건으로 SQL을 생성**하는 실습입니다. 상품별 한글명과 동의어는 `DATA_STANDARD`의 데이터로 관리하며, 전체 목록을 Annotation에 나열하지 않습니다.
 
-**확인 상태: 2026-11-18.** `gemma2:9b` 일반 채팅과 실제 검색 도구 호출은 성공했습니다. 기존 전체 Agent에서는 검색 후 작업 종료가 진행되지 않고 짧은 LLM 요청이 반복됐습니다. 이후 최소 Agent에 명시적 대화 ID 처리를 적용한 실행은 상품 41 / Team shirt / 정가 44.99를 최종 응답으로 반환했습니다. 다음은 같은 대화 ID 처리와 단순화한 작업 지침을 전체 Agent에 적용해 SQL 생성까지 확인하는 단계입니다. 수정한 전체 실행은 아직 미검증이며 아래 기대 SQL은 비교용입니다.
+**확인 상태: 2026-11-18.** 최소 Agent는 상품 41 / Team shirt / 정가 44.99를 최종 응답으로 반환했습니다. 그러나 명시적 대화 ID 처리와 지침 단순화를 적용한 전체 Agent에서도 검색 도구가 약 11ms에 완료된 후 작업 0이 종료되지 않는 반복이 재현됐습니다. SQL 도구는 아직 호출되지 않았습니다. 다음 비교는 현재 최소 구성을 재확인한 뒤 그 Agent·작업을 전체 팀의 첫 단계로 재사용하는 것입니다. 전체 시나리오의 최종 SQL 생성 성공은 미확인이고 아래 기대 SQL은 비교용입니다.
 
 ## 1. 해결하려는 문제
 
@@ -95,6 +95,7 @@ GRANT CREATE PROCEDURE TO LAB;
 | [10_inspect_minimal_agent.sql](scripts/10_inspect_minimal_agent.sql) | 최소 실행의 작업·도구 이력과 DBA 세션 식별 방법 |
 | [11_update_full_agent.sql](scripts/11_update_full_agent.sql) | 기존 전체 Agent의 작업 종료·ID 전달·SQL 생성 지침 보완, 최소 작업의 근거 없는 통화 표기 금지 |
 | [12_inspect_full_agent.sql](scripts/12_inspect_full_agent.sql) | 최신 전체 실행의 두 작업 완료 및 검색→SQL 도구 호출 순서 확인 |
+| [13_reuse_minimal_lookup_stage.sql](scripts/13_reuse_minimal_lookup_stage.sql) | 최소 Agent·작업을 전체 팀의 검색 단계로 재사용하는 비교 실험 |
 
 ### 4.1 기준정보가 없는 경우만 준비
 
@@ -240,7 +241,7 @@ curl -i http://service-ollama/v1/models
 | 반복 호출 발생원 | 관련 DB SQL을 취소하자 Ollama 반복 로그가 멈춘 것으로 확인 |
 | 최종 SQL 생성·정확성 | 작업 전환 문제로 미검증 |
 | 단일 작업 최소 Agent | 최초 대화 ID NULL 오류 후 명시적 대화 생성·전달 수정본이 상품 41 / Team shirt / 정가 44.99를 반환한 것으로 사용자 확인 |
-| 대화 ID 처리·지침을 수정한 전체 Agent | 다음 검증 단계. SQL 생성까지의 성공 여부는 아직 미검증 |
+| 대화 ID 처리·지침을 수정한 전체 Agent | 검색 후 작업 0 미종료가 재현됨. 검색 도구는 약 11ms에 한 번 완료, SQL 작업은 미시작 |
 | 오탈자·미등록 의미 표현 검색 | 미구현 |
 
 - [Oracle Select AI Agent 시작 절차](https://docs.oracle.com/en/database/oracle/oracle-database/26/selai/getting-started-select-ai-agent.html)
@@ -327,6 +328,33 @@ STD_MIN_LOOKUP_TEAM
 
 최신 실행 ID의 작업 0과 1에 모두 완료 시각이 있고, 도구 이력에 검색 후 SQL 호출이 있으며, SQL 도구 입력과 출력이 실제 상품 ID를 유지하는지 확인합니다. 최종 답변에 상품 가격이 나온 것만으로 SQL 생성 성공으로 판정하지 않습니다.
 
-다시 빠른 LLM 호출이 반복되면 추가 실행하지 않습니다. DBA는 `CLIENT_IDENTIFIER = 'STD_FULL_PRODUCT_TEST'`인 현재 세션과 SQL을 확인한 후 해당 SQL만 취소할 수 있습니다. 스크립트는 자동 타임아웃이나 자동 취소를 설정하지 않습니다. 전체 수정본은 정적 검사만 완료했으며 실제 DB 실행 결과는 다음 검증에서 확인합니다.
+다시 빠른 LLM 호출이 반복되면 추가 실행하지 않습니다. DBA는 `CLIENT_IDENTIFIER = 'STD_FULL_PRODUCT_TEST'`인 현재 세션과 SQL을 확인한 후 해당 SQL만 취소할 수 있습니다. 스크립트는 자동 타임아웃이나 자동 취소를 설정하지 않습니다. 현재 전체 구성은 첫 작업에서 반복이 재현됐으며 다음 절의 비교가 필요합니다.
+
+## 12. 전체 첫 작업에서 반복이 재현된 경우
+
+실행 `6088BE9E-56F9-7E29-E063-0213000A399F`의 이력에서 검색 도구 1회가 약 11ms에 완료됐지만 `STD_RESOLVE_PRODUCT_TASK`는 `RUNNING`이고 SQL 작업은 시작되지 않았습니다. 따라서 이번 결과로 SQL 도구의 문제를 판단할 수 없으며, 대화 ID를 지정하는 것만으로 기존 반복이 해결된 것도 아닙니다.
+
+다음은 모델이나 데이터를 바꾸는 대신 현재 최소 구성의 작업·Agent를 전체 팀의 첫 단계에 재사용하는 비교입니다. `11_update_full_agent.sql`이 최소 작업의 통화 표기 지침도 바꿨으므로 이전 성공만 전제하지 말고 현재 최소 구성을 먼저 한 번 확인합니다.
+
+1. 실행 중인 전체 요청을 취소하고 Ollama 반복 로그가 멈췄는지 확인합니다. 과거 SID를 재사용하지 않고 `STD_FULL_PRODUCT_TEST` 식별자의 현재 세션을 확인합니다.
+2. `@scripts/09_run_minimal_agent.sql`을 한 번 실행합니다. 이것도 반복되면 중단하고 아래 전체 비교로 진행하지 않습니다.
+3. 최소 실행이 정상 종료됐을 때만 다음을 실행합니다.
+
+```sql
+@scripts/13_reuse_minimal_lookup_stage.sql
+@scripts/04_run_agent.sql
+```
+
+13번 파일은 다음 두 연결과 SQL 작업의 입력 해석 지침만 변경합니다. 검색 Agent·작업·함수·모델은 변경하지 않습니다.
+
+```text
+STD_PRODUCT_TEAM
+  0: STD_MIN_LOOKUP_AGENT / STD_MIN_LOOKUP_TASK → STD_SEARCH_PRODUCT
+  1: STD_PRODUCT_AGENT / STD_PRODUCT_SQL_TASK → STD_PRODUCT_SQL
+```
+
+SQL 작업의 `input`도 `STD_MIN_LOOKUP_TASK`로 맞춥니다. 최소 작업의 결과가 자연어여도 상품 ID를 읽도록 하며 특정 JSON 형식을 강제하지 않습니다. 비교 중에는 다시 11번을 실행하지 않습니다.
+
+`12_inspect_full_agent.sql`로 확인했을 때 작업 0의 이름이 `STD_MIN_LOOKUP_TASK`이고 완료 시각이 생기는지 먼저 봅니다. 여기서도 반복되면 성공한 단일 작업과 전체 팀의 실행 문맥 차이를 조사해야 합니다. 작업 0은 완료됐지만 작업 1이 반복되면 그때 SQL 단계의 입력·출력을 조사합니다. 이는 원인을 분리하는 미검증 비교안이며 해결을 보장하는 수정본은 아닙니다.
 
 [상위 문서: Select AI Agent](../README.md)
