@@ -1,0 +1,6 @@
+{
+  "name": "select-ai-supervised-poc-v2",
+  "version": "2.0.0",
+  "private": true,
+  "dependencies": { "oracledb": "6.10.0" }
+}

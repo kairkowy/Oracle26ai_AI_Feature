@@ -1,0 +1,124 @@
+{
+  "testedAt": "2026-11-20",
+  "scope": "LAB v2; documentation publication does not rerun model inference",
+  "models": {
+    "nativeCoordinator": "granite4.1:8b",
+    "businessTools": "gemma2:9b"
+  },
+  "components": {
+    "pass": true,
+    "passed": 20,
+    "total": 20
+  },
+  "product": {
+    "pass": true,
+    "elapsedMs": 269018,
+    "reference": [
+      {
+        "product_id": 129,
+        "product_name": "Pro Maple Bat",
+        "list_price": 192.99
+      }
+    ]
+  },
+  "sales": {
+    "pass": true,
+    "elapsedMs": 266738,
+    "reference": [
+      {
+        "revenue_sum": 6063776.96
+      }
+    ]
+  },
+  "human": {
+    "apiFlowPass": true,
+    "workerWaitingObserved": true,
+    "parentTeamWaitObserved": false,
+    "parentTeamState": "SUCCEEDED",
+    "strictTestPass": false,
+    "reference": [
+      {
+        "product_id": 41,
+        "product_name": "Team shirt",
+        "list_price": 44.99
+      }
+    ],
+    "answerSource": "automated client selecting a returned candidate; not a real UI human"
+  },
+  "clientCancellation": {
+    "pass": true,
+    "configuredTimeoutMs": 2000,
+    "elapsedMs": 11016,
+    "sqlExecutions": 0
+  },
+  "reuse": {
+    "unchanged": true,
+    "tables": {
+      "POC_STD_DOMAIN": {
+        "rows": 5,
+        "sha256": "476c19e7cdf1e78230e716f58a698a897f09551074bdb36145997dd5a0b892c7"
+      },
+      "POC_STD_VALUE": {
+        "rows": 117,
+        "sha256": "62baa5f1cde5f98dc79760e6cfd67f32a2c01398139de9b4624629e0deebb586"
+      },
+      "POC_STD_ALIAS": {
+        "rows": 469,
+        "sha256": "2f05700f073e9f594ef6e58c9d4a656805cc7edb2eb10338b1de2aa5eeb863b8"
+      },
+      "POC_QUESTION_TERM": {
+        "rows": 96,
+        "sha256": "988deb5592ecce748ca279e7008360aa52a4bcbdff1e71ad164130746df74fa6"
+      },
+      "POC_AI_DATASET": {
+        "rows": 2,
+        "sha256": "086b17160bd08abc46c283b4263cf60b406c1dbe423ad824ea6956b09eaaced3"
+      },
+      "POC_AI_FIELD": {
+        "rows": 13,
+        "sha256": "1d0335ef79b8e9349c973221d4488cf0150d0ec37145d2dddac9ce6c92e9d605"
+      },
+      "POC_AI_DATASET_FIELD": {
+        "rows": 19,
+        "sha256": "f0c5c4e5f8058e47316a7f5bd00a571e4c1933e58873c745f7fd8aa9ca7e10f2"
+      },
+      "POC_AI_JOIN": {
+        "rows": 4,
+        "sha256": "4efc424efc62c8a93fb28f34234fcb89baf361bf2bf438b9e976ee0331723a88"
+      },
+      "POC_AI_OPERATOR": {
+        "rows": 11,
+        "sha256": "d598a65438cbc1e3fd91ed72368f8ca6a4224f02b6a3b8d9f1b993195388528f"
+      },
+      "POC_AI_AGGREGATE": {
+        "rows": 5,
+        "sha256": "0995fd314910d0287e993243a240af2cbdcd5f532c089ac49adcf48548b25d90"
+      },
+      "POC_AI_POLICY": {
+        "rows": 9,
+        "sha256": "bf6260e7b4f77d92a422eac61a8a6a98662931843897180a6b954c4e29d6fe9f"
+      },
+      "POC_PROMPT": {
+        "rows": 1,
+        "sha256": "85a6f23bdcf103b36c02bb8f8516b6e9522613e37e1ee6558ae69ccf12ce3f46"
+      },
+      "POC_SETTING": {
+        "rows": 3,
+        "sha256": "bd603546afe4b40bbc253e6cfb45b78d367b846647404859db1921834c660568"
+      }
+    },
+    "sourceCounts": {
+      "PRODUCTS": 72,
+      "SALES": 918843,
+      "CUSTOMERS": 55500,
+      "COUNTRIES": 35,
+      "TIMES": 1826
+    }
+  },
+  "showsql": {
+    "status": "INCONCLUSIVE_TEST_SESSION_INTERRUPTED"
+  },
+  "narrateAndExplainSql": {
+    "status": "FULL_NATIVE_REGRESSION_NOT_RUN"
+  }
+}

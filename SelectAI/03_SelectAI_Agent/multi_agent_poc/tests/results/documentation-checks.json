@@ -1,0 +1,55 @@
+{
+  "checkedAt": "2026-11-20T06:41:40.005Z",
+  "fileCount": 24,
+  "sqlChecks": [
+    {
+      "sql": "00_profiles.sql",
+      "logicUnchanged": true,
+      "commented": true
+    },
+    {
+      "sql": "01a_executions.sql",
+      "logicUnchanged": true,
+      "commented": true
+    },
+    {
+      "sql": "01_state.sql",
+      "logicUnchanged": true,
+      "commented": true
+    },
+    {
+      "sql": "02_api.sql",
+      "logicUnchanged": true,
+      "commented": true
+    },
+    {
+      "sql": "03a_cancel.sql",
+      "logicUnchanged": true,
+      "commented": true
+    },
+    {
+      "sql": "03_gateway.sql",
+      "logicUnchanged": true,
+      "commented": true
+    },
+    {
+      "sql": "04_agents.sql",
+      "logicUnchanged": true,
+      "commented": true
+    },
+    {
+      "sql": "05_examples.sql",
+      "logicUnchanged": true,
+      "commented": true
+    },
+    {
+      "sql": "install.sql",
+      "logicUnchanged": true,
+      "commented": true
+    }
+  ],
+  "relativeLinksChecked": 32,
+  "brokenLinks": [],
+  "svgRendered": 2,
+  "sourceLogicUnchanged": true
+}
