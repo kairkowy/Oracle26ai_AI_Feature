@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-11-24T05:50:14.317Z",
+  "revisionDate": "2026-11-24",
+  "sqlLogicUnchanged": true,
+  "sqlFilesChecked": [
+    "00_profiles.sql",
+    "01a_executions.sql",
+    "01_state.sql",
+    "02_api.sql",
+    "03a_cancel.sql",
+    "03_gateway.sql",
+    "04_agents.sql",
+    "05_examples.sql",
+    "install.sql"
+  ],
+  "relativeLinksChecked": 45,
+  "brokenLinks": [],
+  "terminologyHits": [],
+  "syntaxFilesChecked": [
+    "client.cjs",
+    "tests/components.cjs",
+    "tests/native.cjs",
+    "tests/human.cjs"
+  ],
+  "svgRendered": [
+    "diagrams\\architecture.svg",
+    "diagrams\\data-model.svg",
+    "diagrams\\question-flow.svg"
+  ],
+  "databaseInferenceRerun": false,
+  "note": "Documentation and commented examples changed; historical DB results remain dated 2026-11-20."
+}

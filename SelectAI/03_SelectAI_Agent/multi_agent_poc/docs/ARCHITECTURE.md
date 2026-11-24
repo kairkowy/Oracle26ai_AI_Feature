@@ -1,47 +1,54 @@
-# 구성과 자연어 답변 처리 흐름
+# 구조와 역할
 
-[목차](../README.md) · [SVG 구조도](../diagrams/architecture.svg)
+[POC 소개](../README.md) · [질문 하나 따라가기](./QUESTION_TO_ANSWER.md)
 
-## Native Agent와 애플리케이션의 경계
+## 역할을 나눈 이유
 
-Gate는 PL/SQL 제어 계층이고 Supervisor는 Oracle Native Agent다. Gate가 업무 결과를 직접 계산하는 대체 파이프라인을 실행하지 않는다. 실제 표준화·생성·검토·실행·보고는 Native Worker가 등록 Tool을 호출할 때만 진행한다. 다만 다음 단계, 허용 상태, 공개할 결과의 최종 판단은 DB 코드가 담당한다.
+질문을 해석하고 SQL을 만드는 역할만 있으면, 잘못 해석한 요구가 그대로 실행과 답변까지 이어질 수 있다. 이 POC는 기준값을 확인하는 표준화, 조회를 수행하는 처리, 그 결과를 확인하는 검토를 분리했다. Supervisor는 작업을 각 Worker에 위임한다.
 
-| Agent | 일반 Task / Tool | 수행 업무 |
+![전체 구조](../diagrams/architecture.svg)
+
+**Supervisor와 세 Worker는 Oracle Native Select AI Agent**다. 이 밖에 요청을 저장하고 허용된 순서를 검사하는 PL/SQL 진입 계층이 있다. AI가 작업을 수행하고 DB 코드가 그 작업의 상태·승인·반환 조건을 관리하는 구성이다.
+
+## 구성 컴포넌트
+
+표준화 Worker는 사용자의 표현을 사전과 실제 기준값에 연결한다. 상품명이 모호하면 실제 후보를 확인한다. 조회 Worker는 요구를 해석하고 SQL을 생성하며, 승인된 SQL 실행과 검토 완료 보고서 작성을 담당한다. 검토 Worker는 SQL 실행 전 질문과 쿼리를 대조하고, 실행 후 결과의 구조를 확인한다.
+
+Worker가 사용하는 Tool은 PL/SQL 함수와 연결되어 있다. SQL 생성·검토에는 기존 업무 모델을 사용하고, 데이터 실행과 상태 검사는 DB 코드로 처리한다. 이번 구성에서 Native 조정 모델은 granite4.1:8b, Tool 내부 모델은 기존 gemma2:9b 프로파일이다.
+
+| 개념 | 이 POC의 역할 | 구현 이름 |
 |---|---|---|
-| POC_V2_SUPERVISOR | 내장 ORA$DELEGATE_TOOL | Gate가 준 Agent/Task 이름과 요청 ID 문자열을 전달. |
-| POC_V2_STANDARD | STANDARD_TASK / STANDARD_TOOL → STANDARD_FN | 원문의 표준화 문맥 저장. |
-| POC_V2_QUERY | QUERY_TASK / QUERY_TOOL → QUERY_FN | 상태에 따라 prepare, execute_sql, final_report 실행. |
-| POC_V2_REVIEW | REVIEW_TASK / REVIEW_TOOL → REVIEW_FN | 상태에 따라 실행 전/후 review 실행. |
-| 기존 Standard/Query Worker | STANDARD_HUMAN_TASK / QUERY_HUMAN_TASK | 실제 질문과 후보를 Human Tool로 제시. 별도 Worker를 만들지 않음. |
+| Supervisor | 지정 Worker에 작업 위임 | POC_V2_SUPERVISOR |
+| 표준화 Worker | 기준값·상품 후보 확인 | POC_V2_STANDARD |
+| 조회 Worker | 생성·실행·보고 | POC_V2_QUERY |
+| 검토 Worker | 실행 전후 검토 | POC_V2_REVIEW |
+| Tool 어댑터 | Worker의 도구 호출을 DB 처리로 연결 | STANDARD_FN / QUERY_FN / REVIEW_FN |
+| 업무 처리 | 표준화·생성·검토·실행·보고의 실제 함수 | POC_V2_API |
+| 공개 진입·제어 | 요청 초기화, 상태별 Native 호출, 최종 결과 검증 | POC_V2_GATE |
 
-각 일반 Task는 Tool Observation을 받은 뒤 **Final Answer: DONE**으로 종료하도록 지시한다. 한 단계 위임은 모델 지침이며 엄격한 1회 호출 보장은 아니다. 실제 재호출은 코드 상태 검사·잠금·예산으로 방어한다. 위임의 task_input은 객체가 아닌 **32자리 요청 ID 문자열**이다.
+세 Worker에 일반 Task가 하나씩 있고, 표준화·조회 Worker에는 사용자 확인용 Human Task도 있다. Task는 총 5개지만 Worker는 3개다. Team은 sequential로 구성한다.
 
-## 일반 조회 흐름
+## 한 단계씩 이어 가는 방법
 
-1. 사용자가 원문·conversation_id·client_turn_id로 Gate.run을 호출한다. LLM 호출 전에 NEW 요청을 INSERT/COMMIT한다. 같은 대화·turn의 동일 원문 재전송만 기존 ID에 연결한다.
-2. Gate가 request_id/revision을 Native state_variables로 전달하고 Supervisor가 Standard Worker를 호출한다.
-3. Standard Tool이 POC_STANDARD.scan_question, question_hints와 POC_PRODUCT_RESOLVE를 호출해 실기준값·후보·업무 카탈로그를 context_json에 저장한다. 후보가 유일하면 STANDARDIZED다.
-4. Query Worker의 prepare가 의미 문맥으로 요구 JSON을 생성한다. dataset_key, action, filters, group_keys, required_outputs, 표시명, 행 한도, 미확정 항목을 해석한다. 필드 소속과 상품 ID 조건을 메타데이터로 검증한다.
-5. DBMS_CLOUD_AI.GENERATE의 showsql로 SQL만 생성해 SQL_GENERATED로 저장한다. 상품 목록은 PRODUCTS 전용 프로파일을 사용한다. 집계 요구 없이 판매 테이블을 조인해 상품이 중복되는 경로를 거절한다.
-6. Review Worker가 SELECT 허용 규칙, 소스, 컬럼, 집계 기준과 질문 의미를 검토한다. 승인 시 PRECHECKED 및 revision/SQL version/SQL 전체 CLOB를 저장한다.
-7. RUNSQL/NARRATE의 실행 허용 요청만 Query Worker가 execute_sql로 처리한다. 행 잠금을 유지한 채 승인 SQL과 현재 SQL을 비교하고 DBMS_SQL로 **저장된 SQL 그대로** 실행한다. SQL 생성 모델을 다시 호출해 실행문을 바꾸지 않는다.
-8. Review Worker가 결과 컬럼·행 형태·상품 고유 키 중복 등을 사후 검토해 RESULT_REVIEWED로 전이한다. Query Worker가 원시 결과와 기존 한글 표시 규칙으로 보고서를 저장한다.
-9. Gate.public_result가 보고서·승인·실행 버전, 검토 계약과 SQL CLOB 일치를 확인해 SUCCEEDED 응답을 만든다. Native의 자유 문장이나 raw_agent_output을 사용자 보고서로 대체하지 않는다.
+사용자가 Gate.run을 호출하면 Gate가 요청을 저장하고 현재 상태에서 필요한 Worker를 정한다. Native Supervisor에 Worker·Task 이름과 요청 ID를 전달하면 Supervisor가 Worker를 위임 호출한다. Worker가 Tool을 실행하면 DB 상태가 바뀐다. Gate는 이를 읽어 다음 Native 실행을 시작한다.
 
-정상 실행형 상태는 **NEW → STANDARDIZED → SQL_GENERATED → PRECHECKED → EXECUTED → RESULT_REVIEWED → SUCCEEDED**다. PREPARING/EXECUTING은 처리 중 상태이며 실패 시 PREPARE_FAILED, PRECHECK_FAILED, EXECUTE_FAILED, POSTCHECK_FAILED 또는 FAILED로 남는다. 재시도는 상태·정책·예산이 허용하는 경우에만 가능하다.
+한 단계 위임은 모델에게 내리는 지시다. 모델이 언제나 한 번만 호출한다고 가정하지 않으므로, Tool이 현재 상태·버전·실행 여부를 검사해 중복 처리를 막는다. Worker에게는 제어 결과를 전달하고 사용자에게 보여줄 수치를 다시 쓰게 하지 않는다.
 
-## 실행 없는 요청
+Gate는 SQL 계산을 직접 끝내는 대체 파이프라인을 실행하지 않는다. 업무 단계는 Native Worker가 Tool을 호출할 때 진행한다. 다만 Native가 반환한 완료 문장이 사용자 결과의 근거가 되지는 않는다. 최종 응답은 저장된 승인·실행·보고서를 코드에서 검증해 만든다.
 
-SHOWSQL은 생성·사전 검토 후 SQL을 반환한다. EXPLAINSQL은 실행 없이 SQL 설명을 검토·보고한다. 두 경로는 result_json=NULL, execution_attempts=0이어야 최종 게이트를 통과한다. 원문의 “SQL만”, “실행하지 말아”는 실행 허용을 다시 제한한다. NARRATE는 검증된 조회 결과를 해설하는 실행형 경로다. 전체 Native 회귀 완료 범위는 [검증 결과](VALIDATION.md)와 구분한다.
+## 사용자 확인과 재개
 
-## 모호한 상품과 사용자 확인
+상품 후보가 여러 개이면 요청을 사용자 확인 상태로 남긴다. 실제 답변이 들어와야 후보 ID를 확인하고 요청 버전을 올려 계속한다. Worker가 사용자 답변을 발명해 저장하는 도구는 제공하지 않는다.
 
-실제 상품명이 같은 후보가 여러 개이면 NEEDS_CLARIFICATION으로 저장한다. 응답에는 실제 product_id/name/display_name과 전체 후보 수·잘림 여부가 담긴다. 현재 정책은 최대 5개를 표시한다. 보이지 않는 후보를 임의 선택하지 않으며 정확한 상품명으로 새 질문을 할 수 있다.
+현재 LAB에서는 Human Worker가 WAITING_FOR_HUMAN인데 상위 Team은 SUCCEEDED로 반환되는 현상을 관찰했다. 따라서 Gate는 저장된 NEEDS_CLARIFICATION을 기준으로 SQL 생성을 차단한다. 재개 시 Native Team이 실제 대기 중이면 같은 실행 대화를 쓰고, 그렇지 않으면 새 실행 대화에서 저장 요청을 이어 간다. 상위 상태 문제는 미해결 항목으로 남긴다.
 
-실제 사용자가 선택한 ID를 Gate.resume(request_id, revision, answer)에 전달하면 후보 존재를 검증하고 revision을 증가시킨다. 이전 승인·결과를 무효화하고 선택된 ID만 문맥에 남긴다. 사용자 답변을 LLM이 발명해 저장하는 CLARIFY Tool은 없다.
+## 요청 상태와 실행 제한
 
-현재 LAB 구성은 Human Worker만 WAITING_FOR_HUMAN이고 상위 Team은 SUCCEEDED로 반환되는 제약이 있다. Gate는 저장된 NEEDS_CLARIFICATION을 진실의 기준으로 삼는다. 재개 시 상위 Team이 실제 대기이면 같은 Native 대화를 사용하고, 아니면 새 Native 대화에서 저장 요청을 이어 간다. 이 방식의 API 검증과 상위 Native 대기 실패를 동일한 성공으로 취급하지 않는다.
+정상 실행형 흐름은 다음과 같다. 실제 처리 중에는 생성 중·실행 중 상태도 사용한다.
 
-## 재시도·동시성·종료
+~~~text
+NEW → STANDARDIZED → SQL_GENERATED → PRECHECKED
+    → EXECUTED → RESULT_REVIEWED → SUCCEEDED
+~~~
 
-요청당 Tool 단계 최대 20회, Native 호출 최대 12회, 시작/재개 후 deadline 15분, 무진행 2회 제한을 적용한다. 이는 DB 검사가 가능한 경계의 한도이며 LLM 내부의 모든 토큰/잘못된 도구명 반복을 직접 세지 않는다. 클라이언트는 드라이버 callTimeout과 별도 경과 시간 break 타이머를 갖는다. 취소 함수는 요청을 FAILED로 만들고 runner 토큰을 무효화한다. 취소와 DB 정리에 걸리는 시간 때문에 타이머 시각이 즉시 종료 시각은 아니다.
+SQL 작성·설명 요청은 실행과 사후 결과 검토를 건너뛰고 실행 없는 보고 경로로 간다. 재시도는 오류 상태, 정책과 예산이 허용하는 경우에만 수행한다. 상세 상태명과 한도는 [프로그램 설명](./PROGRAMS.md)의 부록에 모았다.
