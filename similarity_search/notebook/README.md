@@ -9,7 +9,7 @@ Oracle Linux 9 서버에 `lab` 계정으로 접속하여 이 저장소의 `.ipyn
 | 서버 | Oracle Linux 9.4 이상, 공인 IP `129.80.xxx.xxx` |
 | SSH 접속 계정 | `lab` — `/home/lab` 홈 디렉터리가 있는 기존 OS 계정 |
 | Python | `lab` 계정으로 Python 3.12.16 소스 설치, 전용 가상환경 `/home/lab/venvs/vector-lab` |
-| 실습 폴더 | `/home/lab/labs/Oracle26ai_AI_Feature/similarity_search` |
+| 실습 폴더 | `/home/lab/labs/similarity_search` |
 | Jupyter | 서버의 `127.0.0.1:8888`에서 실행하고 SSH 터널로 접속 |
 | DB | 별도로 준비한 Oracle AI Database PDB, 실습 스키마·모델·권한 |
 | LLM | RAG를 진행하는 경우에만 Ollama와 `llama3.2` 등 생성 모델 |
@@ -108,24 +108,30 @@ make altinstall
 **실행 위치: 서버 SSH 터미널, `lab` 계정**
 
 ```bash
-mkdir -p /home/lab/labs /home/lab/venvs
-cd /home/lab/labs
-git clone https://github.com/kairkowy/Oracle26ai_AI_Feature.git
-cd /home/lab/labs/Oracle26ai_AI_Feature/similarity_search
+mkdir -p /home/lab/src /home/lab/labs /home/lab/venvs
+curl --fail --location --show-error \
+  --output /home/lab/src/Oracle26ai_AI_Feature-main.tar.gz \
+  https://github.com/kairkowy/Oracle26ai_AI_Feature/archive/refs/heads/main.tar.gz
+```
+
+기존 실습 폴더가 있다면 로컬에서 수정한 Notebook과 데이터를 먼저 백업합니다. 아래 백업과 압축 해제는 다운로드 성공 후 실행합니다.
+
+```bash
+if [ -d /home/lab/labs/similarity_search ]; then
+  cp -a /home/lab/labs/similarity_search \
+    "/home/lab/labs/similarity_search.backup.$(date +%Y%m%d%H%M%S)"
+fi
+tar -xzf /home/lab/src/Oracle26ai_AI_Feature-main.tar.gz \
+  -C /home/lab/labs --strip-components=1 \
+  Oracle26ai_AI_Feature-main/similarity_search
+cd /home/lab/labs/similarity_search
 ls -1 *.ipynb
 ls -l user_functions.py notebook/requirements.txt
 ```
 
-이미 같은 경로에 저장소가 있으면 다시 clone하지 않고, 작업 내용을 먼저 확인한 뒤 갱신합니다.
+저장소의 `main` 아카이브에서 `similarity_search` 폴더만 추출하므로 작업 경로는 `/home/lab/labs/similarity_search`가 됩니다. 이 폴더에는 Git 메타데이터가 없으며, 갱신할 때도 이 단계의 다운로드 → 백업 → 압축 해제를 반복합니다. 같은 이름의 파일은 새 버전으로 덮어쓰므로 로컬 수정 사항은 백업과 비교해 반영합니다. 새 아카이브에서 삭제된 파일은 기존 폴더에서 자동으로 제거되지 않습니다.
 
-```bash
-cd /home/lab/labs/Oracle26ai_AI_Feature
-git status --short
-git pull --ff-only
-cd similarity_search
-```
-
-수정된 파일이나 충돌이 있으면 보존·정리한 후 갱신합니다. 노트북 6개와 `user_functions.py`, `data` 폴더가 보여야 합니다. 설치 중 인터넷으로 Oracle Linux 저장소, python.org, GitHub, PyPI 및 패키지 배포 호스트에 접근할 수 있어야 합니다. 폐쇄망은 Python 소스 아카이브와 OS 빌드 의존 패키지를 먼저 준비하고, 같은 OS·CPU 아키텍처·Python 버전의 온라인 환경에서 Python 의존 wheel도 준비해 반입합니다.
+노트북 6개와 `user_functions.py`, `data` 폴더가 보여야 합니다. 설치 중 인터넷으로 Oracle Linux 저장소, python.org, GitHub, PyPI 및 패키지 배포 호스트에 접근할 수 있어야 합니다. 폐쇄망은 Python 소스 아카이브와 OS 빌드 의존 패키지를 먼저 준비하고, 같은 OS·CPU 아키텍처·Python 버전의 온라인 환경에서 Python 의존 wheel도 준비해 반입합니다.
 
 ## 4. Python 가상환경 생성과 패키지 설치
 
@@ -137,7 +143,7 @@ source /home/lab/venvs/vector-lab/bin/activate
 python --version
 command -v python
 python -m pip install --upgrade pip
-cd /home/lab/labs/Oracle26ai_AI_Feature/similarity_search
+cd /home/lab/labs/similarity_search
 python -m pip install -r notebook/requirements.txt
 python -m pip check
 ```
@@ -231,7 +237,7 @@ c.ServerApp.ip = '127.0.0.1'
 c.ServerApp.port = 8888
 c.ServerApp.port_retries = 0
 c.ServerApp.open_browser = False
-c.ServerApp.root_dir = '/home/lab/labs/Oracle26ai_AI_Feature/similarity_search'
+c.ServerApp.root_dir = '/home/lab/labs/similarity_search'
 EOF
 chmod 600 /home/lab/.jupyter/jupyter_server_config.py
 ```
@@ -248,7 +254,7 @@ SSH 연결이 끊겨도 서버 실행을 유지하려면 tmux 세션에서 실�
 tmux new -s vector-notebook
 source /home/lab/venvs/vector-lab/bin/activate
 source /home/lab/.config/vector-lab/env.sh
-cd /home/lab/labs/Oracle26ai_AI_Feature/similarity_search
+cd /home/lab/labs/similarity_search
 jupyter lab --no-browser
 ```
 
@@ -293,7 +299,7 @@ ssh -N -L 8889:127.0.0.1:8888 -o ExitOnForwardFailure=yes "lab@$LabHost"
 
 **실행 위치: JupyterLab의 새 Python Notebook, 커널 `Python (vector-lab)`**
 
-새 Notebook은 파일 탐색기의 최상위 `similarity_search` 폴더에서 만듭니다. `notebook` 하위 폴더에서 만들었다면 먼저 `%cd /home/lab/labs/Oracle26ai_AI_Feature/similarity_search`를 실행합니다.
+새 Notebook은 파일 탐색기의 최상위 `similarity_search` 폴더에서 만듭니다. `notebook` 하위 폴더에서 만들었다면 먼저 `%cd /home/lab/labs/similarity_search`를 실행합니다.
 
 첫 셀에서 실행 파일·작업 경로·import를 확인합니다.
 
@@ -349,7 +355,7 @@ Notebook 설치와 DB 데이터 준비는 별도입니다. [공통 준비](../00
 | 테이블 RAG | `BROAD_TBL`, [보도자료 데이터 준비 SQL](../2-2.RAG_Table.md#테이블-생성과-샘플-데이터-적재-sql) |
 | Hybrid | 위 문서 데이터와 별도 [Hybrid 인덱스](../3.Hybrid_search.md#하이브리드-인덱스-준비) |
 
-`BFILENAME`에 사용되는 DIRECTORY는 **DB 서버**의 파일 경로입니다. Notebook 서버의 `/home/lab/labs/.../data`와 자동으로 연결되지 않습니다. DB가 다른 서버에 있으면 파일도 DB 서버로 복사해야 합니다. 같은 서버라도 DB Oracle OS 계정이 `/home/lab` 아래 파일을 읽을 수 있다고 가정하지 말고, [공통 준비](../00.Setup.md)의 전용 DB 데이터 경로와 읽기 권한을 사용합니다.
+`BFILENAME`에 사용되는 DIRECTORY는 **DB 서버**의 파일 경로입니다. Notebook 서버의 `/home/lab/labs/similarity_search/data`와 자동으로 연결되지 않습니다. DB가 다른 서버에 있으면 파일도 DB 서버로 복사해야 합니다. 같은 서버라도 DB Oracle OS 계정이 `/home/lab` 아래 파일을 읽을 수 있다고 가정하지 말고, [공통 준비](../00.Setup.md)의 전용 DB 데이터 경로와 읽기 권한을 사용합니다.
 
 RAG를 선택했다면 먼저 준비된 Ollama 서비스의 모델 목록을 확인합니다.
 
