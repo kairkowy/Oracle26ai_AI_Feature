@@ -1,6 +1,17 @@
 # Oracle AI Vector Search 유사도 검색 및 RAG 실습
 
-Oracle AI Database의 문서·이미지 유사도 검색, 문서·테이블 RAG, 하이브리드 검색 실습입니다. 노트북 6개를 Markdown으로 변환해 기존 실습 문서를 대체했습니다. Python 코드와 준비 SQL을 문서 안에서 확인하고 순서대로 실행할 수 있습니다.
+Oracle AI Database의 문서·이미지 유사도 검색, 문서·테이블 RAG, 하이브리드 검색 실습입니다. Notebook 기반 Python 코드로 실행하며, 같은 내용의 Markdown 문서에서 Python 코드와 준비 SQL을 확인할 수 있습니다.
+
+## Jupyter Notebook
+
+Markdown 문서와 같은 이름의 노트북 6개를 복원했습니다. Python 작업 디렉터리를 `similarity_search`로 두고 실행합니다. 공통 함수는 `user_functions.py`를 사용합니다.
+
+- [문서 유사도 검색](1-1.simsearch_doc.ipynb)
+- [이미지 유사도 검색](1-2.smsearch_image.ipynb)
+- [문서 RAG](2-1.RAG_DOC.ipynb)
+- [테이블 RAG](2-2.RAG_Table.ipynb)
+- [하이브리드 검색](3.Hybrid_search.ipynb)
+- [공통 함수 설명과 코드](user_functions.ipynb)
 
 ## 실습 순서와 문서
 
@@ -37,7 +48,7 @@ Markdown 코드 블록은 화면에서 자동 실행되지 않습니다. `sql` �
 
 `data/doc`는 일반 문서, `data/doc/rag`는 RAG용 PDF, `data/images`는 검색 대상 이미지, `data/images/val_data`는 입력용 이미지입니다. `images`는 과거 실행 결과 이미지입니다.
 
-기존 노트북과 독립 SQL 파일은 문서로 통합했습니다. 자동 백업과 Windows 바로가기는 제외합니다. 원본 폴더에는 바로가기 대상인 Ollama 오프라인 설치 문서 본문이 없습니다.
+준비 SQL은 각 실습 문서에 통합되어 있습니다. 자동 백업과 Windows 바로가기는 제외합니다. 원본 폴더에는 바로가기 대상인 Ollama 오프라인 설치 문서 본문이 없습니다.
 
 문서 반영 기준일은 2026-11-26입니다. 코드 보존·파일 참조·문서 링크를 정적으로 검토했으며, 실제 DB·ONNX 모델·Ollama에 연결한 실행 검증은 수행하지 않았습니다.
 
