@@ -1,6 +1,6 @@
 # 공통 Python 함수
 
-원본 user_functions.ipynb의 공통 기능을 [user_functions.py](user_functions.py) 모듈로 옮겼습니다. 각 실습은 이 모듈을 직접 import하므로 노트북 가져오기 플러그인이나 OML4Py가 필요하지 않습니다.
+공통 함수의 실행 코드를 [user_functions.py](user_functions.py) 모듈로 옮겼습니다. 각 실습은 이 모듈을 직접 import하므로 노트북 가져오기 플러그인이나 OML4Py가 필요하지 않습니다.
 
 ## 함수별 역할
 

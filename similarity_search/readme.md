@@ -1,85 +1,44 @@
 # Oracle AI Vector Search 유사도 검색 및 RAG 실습
 
-Oracle AI Database의 벡터 기능으로 **문서·이미지를 검색하고, 검색 결과를 LLM의 답변 근거로 활용**하는 실습 자료입니다. 키워드와 벡터 검색을 결합하는 Hybrid 예제도 포함합니다.
+Oracle AI Database의 문서·이미지 유사도 검색, 문서·테이블 RAG, 하이브리드 검색 실습입니다. 노트북 6개를 Markdown으로 변환해 기존 실습 문서를 대체했습니다. Python 코드와 준비 SQL을 문서 안에서 확인하고 순서대로 실행할 수 있습니다.
 
-로컬 실습 자료의 문서·노트북·데이터를 반영하고, 실행에 필요한 공통 Python 함수를 별도 모듈로 정리했습니다. SQL·Python 코드와 단계별 설명은 각 문서에서 확인합니다. Jupyter에서는 아래 노트북을 사용할 수 있으며, Markdown 자체가 실행 파일은 아닙니다.
+## 실습 순서와 문서
 
-## 문서와 권장 순서
-
-| 순서 | 문서 | 주요 내용 |
+| 순서 | 문서 | 포함 내용 |
 | --- | --- | --- |
-| 0 | [공통 환경과 데이터 준비](00.Setup.md) | PDB·권한·모델·원본 파일, Python과 DB의 경로 구분, Ollama 연결과 재실행 안내 |
-| 1-1 | [문서 유사도 검색](1-1.simsearch_doc.md) | BLOB → 텍스트 추출 → 청킹 → 임베딩 → 벡터 저장·검색 |
-| 1-2 | [이미지–이미지·텍스트–이미지 검색](1-2.smsearch_image.md) | CLIP 이미지·텍스트 인코더를 이용한 공통 공간 검색 |
-| 2-1 | [문서 RAG](2-1.RAG_DOC.md) | LLM 직접 질의와 문서 CONTEXT를 추가한 응답 비교, LangChain·DB REST 경로 |
-| 2-2 | [테이블 행 RAG](2-2.RAG_Table.md) | 보도제목 임베딩으로 가까운 행을 찾고 메타데이터를 근거로 응답 |
-| 3 | [하이브리드 검색](3.Hybrid_search.md) | Oracle Text 키워드 검색과 벡터 검색 결합, 벡터 전용 검색과 비교 |
-| 참고 | [공통 함수 설명](user_functions.md) · [Python 모듈](user_functions.py) | DB 연결·조회·DML·LOB 처리·표와 이미지 출력 |
+| 0 | [공통 환경과 데이터 준비](00.Setup.md) | 실행 위치, 패키지, 권한·모델, 파일 경로, 연결 확인 |
+| 1-1 | [문서 유사도 검색](1-1.simsearch_doc.md) | DOC_STORE·청크 테이블 생성과 전체 문서 적재 SQL, 임베딩·검색 Python |
+| 1-2 | [이미지 유사도 검색](1-2.smsearch_image.md) | IMG_TBL 생성과 전체 이미지 적재 SQL, CLIP 이미지·텍스트 검색 |
+| 2-1 | [문서 RAG](2-1.RAG_DOC.md) | RAG 테이블 생성·PDF 적재 SQL, LangChain·DB REST 호출 |
+| 2-2 | [테이블 RAG](2-2.RAG_Table.md) | BROAD_TBL 생성과 전체 보도자료 INSERT, 행 검색 기반 응답 |
+| 3 | [하이브리드 검색](3.Hybrid_search.md) | 하이브리드 인덱스 SQL, 키워드·벡터 검색 및 결과 비교 |
+| 참고 | [공통 Python 함수](user_functions.md) | 함수 설명과 전체 Python 코드, 실행 모듈 [user_functions.py](user_functions.py) |
 
-처음에는 공통 준비 후 **문서 유사도 검색 → 문서 RAG**로 진행합니다. 이미지 검색과 테이블 RAG는 목적에 따라 선택할 수 있습니다. Hybrid는 문서 검색을 확인한 뒤 진행하며 별도 하이브리드 인덱스를 준비합니다.
+공통 준비 후 문서 검색 → 문서 RAG 순서로 진행합니다. 이미지 검색·테이블 RAG는 독립적으로 선택할 수 있으며, Hybrid는 문서 데이터 적재 후 진행합니다.
 
-## Jupyter Notebook
+## 코드 실행 방법
 
-노트북은 로컬 원본의 시나리오를 기존 Markdown의 정리된 코드와 설명에 맞췄습니다. 접속 정보는 환경 변수 또는 입력을 사용하며, 실행 결과는 비워 두었습니다. 공통 함수는 `user_functions.py`를 사용하므로 함수 노트북을 먼저 실행할 필요가 없습니다. 노트북의 SQL 블록은 SQL 클라이언트에서 별도로 실행합니다.
+1. [data](data)의 원본 문서·이미지를 DB 서버에 준비하고 필요한 ONNX 모델을 적재합니다. 모델 파일은 별도로 준비합니다.
+2. 각 문서의 **테이블 생성과 샘플 데이터 적재 SQL**을 관리자 작업과 실습 계정 작업으로 나누어 실행합니다. DB 경로는 실제 환경에 맞게 변경합니다.
+3. Python 작업 디렉터리를 `similarity_search`로 두고 같은 문서의 Python 코드 블록을 위에서 아래로 같은 세션에서 실행합니다. 공통 함수는 `user_functions.py`에서 가져옵니다.
+4. RAG는 Ollama 서비스·생성 모델과 Python 및 DB 서버의 연결을 각각 준비합니다.
 
-- [문서 유사도 검색](1-1.simsearch_doc.ipynb)
-- [이미지 유사도 검색](1-2.smsearch_image.ipynb)
-- [문서 RAG](2-1.RAG_DOC.ipynb)
-- [테이블 RAG](2-2.RAG_Table.ipynb)
-- [하이브리드 검색](3.Hybrid_search.ipynb)
-- [공통 함수 설명](user_functions.ipynb)
+Markdown 코드 블록은 화면에서 자동 실행되지 않습니다. `sql` 블록은 SQL*Plus·SQLcl 등 SQL 클라이언트에서, `python` 블록은 Python에서 실행합니다. Python 문자열에 들어 있는 검색·임베딩 SQL은 해당 Python 코드가 바인드 값과 함께 실행합니다.
 
-## 추가 환경 자료와 스크립트
+접속 정보는 `ORACLE_USER`, `ORACLE_PASSWORD`, `ORACLE_DSN` 환경 변수 또는 입력을 사용합니다. 기존 객체가 있는 경우 전체 준비 SQL을 반복 실행하지 말고 필요한 단계를 선택합니다.
 
-- [Oracle·Ollama 환경 준비 참고 자료](오라클%20-%20Ollama%20환경%20RAG%20예제%20시나리오%20준비.md): 로컬 원본의 23ai 환경 구성 기록입니다. 현재 실습의 공통 준비는 [00.Setup.md](00.Setup.md)를 기준으로 합니다.
-- [한국어 하이브리드 인덱싱 상세 자료](오라클%20벡터%20hybrid%20indexing%20사용%20방법.md): 한국어 lexer·vectorizer preference·검색 예제를 포함합니다.
-- [similarity_config.sql](similarity_config.sql): 로컬 자료의 파일명으로 실행할 수 있는 진입점이며, 정리된 [similarity_search_config.sql](similarity_search_config.sql)을 호출합니다.
-- [cr_users.sh](cr_users.sh): Linux 실습 OS 계정 `lab01`~`lab25` 생성 예제입니다. 관리자 권한이 필요하며, 원본의 사용자명과 동일한 초기 비밀번호는 사용 환경에 맞게 바꿉니다.
-- [multi_user_config.sql](multi_user_config.sql): DB 계정 `USER_01`~`USER_NN` 삭제 대상 확인용입니다. 기본값은 삭제하지 않으며, `DO_DELETE=YES`로 변경한 경우에만 계정과 객체를 삭제합니다. OS 계정 생성 스크립트와 계정 체계가 다릅니다. 원본 메모가 참조한 `create_users.sql`은 제공되지 않았습니다.
+## 추가 환경 가이드
 
-로컬 데이터의 PDF·HWPX·CSV·이미지·검증용 이미지를 모두 대조했습니다. `.ipynb_checkpoints` 자동 백업과 다른 PC에서 사용할 수 없는 Windows `.lnk` 바로가기는 배포 대상에서 제외했습니다. 바로가기 대상인 Ollama 오프라인 설치 문서의 본문은 원본 폴더에 없습니다.
+- [Oracle·Ollama 환경 구성](오라클%20-%20Ollama%20환경%20RAG%20예제%20시나리오%20준비.md): 로컬 원본의 23ai 환경 구성 기록과 추가 SQL 예제입니다.
+- [한국어 하이브리드 인덱싱 상세](오라클%20벡터%20hybrid%20indexing%20사용%20방법.md): 한국어 lexer·vectorizer preference와 검색 SQL입니다.
+- [여러 사용자 실습 계정](multi_user_config.md): Linux 계정 생성 셸 코드와 Oracle DB 계정 정리 SQL입니다.
 
-## 실습 전 준비 사항
+## 데이터와 검증 범위
 
-| 구분 | 준비할 내용 |
-| --- | --- |
-| Oracle AI Database | 온프레미스 26ai의 실습 PDB와 계정을 준비합니다. 사용 RU의 VECTOR·ONNX·HNSW·Hybrid 지원과 패키지 구성을 확인합니다. |
-| Python | `oracledb`, `pandas`를 기본으로 준비하고, 이미지 실습에는 Pillow·Matplotlib, RAG에는 LangChain·Ollama 연동 패키지를 추가합니다. |
-| 임베딩 모델 | 문서·테이블용 `MULTILINGUAL_E5_SMALL`, 이미지용 CLIP 이미지·텍스트 모델을 DB에 적재합니다. 모델 파일은 저장소에 포함되어 있지 않습니다. |
-| 샘플 데이터 | [data](data)의 PDF·HWPX·이미지를 DB 서버에 준비하고 [데이터 준비 SQL](similarity_search_config.sql)의 필요한 구간을 계정 역할에 맞게 실행합니다. |
-| LLM — RAG 선택 시 | Ollama 서비스와 생성 모델을 준비합니다. LangChain은 Python에서, DB REST는 DB 서버에서 호출하므로 각각 연결을 확인합니다. |
-| 실행 위치 | Python 작업 디렉터리를 `similarity_search`로 두고 같은 문서의 코드 블록을 순서대로 실행합니다. SQL은 별도 SQL 클라이언트에서 실행합니다. |
+`data/doc`는 일반 문서, `data/doc/rag`는 RAG용 PDF, `data/images`는 검색 대상 이미지, `data/images/val_data`는 입력용 이미지입니다. `images`는 과거 실행 결과 이미지입니다.
 
-설치·권한·파일 적재·점검 SQL은 [공통 준비 문서](00.Setup.md)에 모았습니다. DB 관리자 작업과 실습 계정 작업을 구분하며, 원본 자료 적재가 끝나기 전에 검색 예제부터 실행하지 않습니다.
+기존 노트북과 독립 SQL 파일은 문서로 통합했습니다. 자동 백업과 Windows 바로가기는 제외합니다. 원본 폴더에는 바로가기 대상인 Ollama 오프라인 설치 문서 본문이 없습니다.
 
-## 데이터와 객체 구성
+문서 반영 기준일은 2026-11-26입니다. 코드 보존·파일 참조·문서 링크를 정적으로 검토했으며, 실제 DB·ONNX 모델·Ollama에 연결한 실행 검증은 수행하지 않았습니다.
 
-| 실습 | 원본·입력 | DB 객체 |
-| --- | --- | --- |
-| 문서 검색 | `data/doc`의 PDF·HWPX | `DOC_STORE`, `DOC_STORE_CHUNKS` |
-| 이미지 검색 | `data/images`, 입력 이미지 `data/images/val_data` | `IMG_TBL` |
-| 문서 RAG | `data/doc/rag`의 PDF | `RAG_TBL`, `RAG_TBL_V` |
-| 테이블 RAG | SQL 파일의 보도자료 제목·부처·일자 | `BROAD_TBL` |
-| Hybrid | `DOC_STORE` 원본 문서 | `DOC_HB_IDX1` 하이브리드 인덱스, 비교용 `DOC_STORE_CHUNKS` |
-
-DB 서버의 DIRECTORY 경로와 Python의 상대 경로는 서로 다릅니다. HWPX 등 문서 형식은 환경의 텍스트 필터에서 실제 추출되는지 확인합니다. 이미지 예제의 `images` 폴더는 **원본 노트북의 출력 화면**이며 입력 데이터는 `data/images`에 있습니다.
-
-## 실습에서 비교할 내용
-
-- **검색과 생성**: 유사도 검색은 가까운 청크·행·이미지를 반환하고, RAG는 그 결과를 CONTEXT로 전달해 응답을 생성합니다.
-- **문서와 테이블 RAG**: 문서 RAG는 본문 청크를, 테이블 RAG는 보도제목으로 찾은 행의 메타데이터를 사용합니다. 테이블 컬럼 정의를 임베딩하는 예제는 아닙니다.
-- **정확 검색과 근사 검색**: `FETCH FIRST` 결과를 기준으로 근사 검색과 비교합니다. 인덱스를 생성했다고 모든 검색이 근사 검색으로 바뀌지는 않습니다.
-- **벡터와 Hybrid**: 의미상 가까운 자료를 찾는 방식과 특정 키워드를 함께 활용하는 방식의 후보·순위 차이를 확인합니다.
-
-## 결과 확인과 참고 문서
-
-검색 결과는 문서번호·청크ID·이미지·원본 행에 대조합니다. RAG 답변은 실제 검색 근거에 없는 사실을 추가하지 않았는지 확인합니다. 원본 노트북의 오래된 실행 시간과 응답을 현재 성능·정답으로 고정하지 않았으며, 이미지 출력 5개만 과거 실행 예시로 보존했습니다.
-
-- [Oracle AI Vector Search 사용자 가이드](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/index.html)
-- [Oracle 문서 추출·청킹·임베딩](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/convert-file-text-chunks-embeddings-oracle-ai-database.html)
-- [Oracle Hybrid SEARCH](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/search.html)
-- [python-oracledb VECTOR 지원](https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html)
-
-로컬 문서·데이터 반영 및 파일 정합성 검토 기준일은 2026-11-26입니다. 실제 DB·ONNX 모델·Ollama에 연결한 실행 검증은 수행하지 않았습니다.
-
-[상위 문서: 저장소 소개](../README.md) · [Select AI 실습](../SelectAI/README.md)
+[상위 문서](../README.md) · [Select AI 실습](../SelectAI/README.md)
