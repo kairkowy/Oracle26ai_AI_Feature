@@ -38,7 +38,7 @@ Markdown 문서와 같은 이름의 노트북 6개를 복원했습니다. Python
 
 Markdown 코드 블록은 화면에서 자동 실행되지 않습니다. `sql` 블록은 SQL*Plus·SQLcl 등 SQL 클라이언트에서, `python` 블록은 Python에서 실행합니다. Python 문자열에 들어 있는 검색·임베딩 SQL은 해당 Python 코드가 바인드 값과 함께 실행합니다.
 
-접속 정보는 `ORACLE_USER`, `ORACLE_PASSWORD`, `ORACLE_DSN` 환경 변수 또는 입력을 사용합니다. 기존 객체가 있는 경우 전체 준비 SQL을 반복 실행하지 말고 필요한 단계를 선택합니다.
+Notebook과 DB는 같은 서버에서 실행하며 DSN은 `localhost:1521/orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com`으로 고정합니다. DB 사용자명과 비밀번호는 매번 입력받습니다. 기존 객체가 있는 경우 전체 준비 SQL을 반복 실행하지 말고 필요한 단계를 선택합니다.
 
 ## 추가 환경 가이드
 

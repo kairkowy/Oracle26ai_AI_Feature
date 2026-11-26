@@ -11,10 +11,10 @@ Oracle Linux 9 서버에 `lab` 계정으로 접속하여 이 저장소의 `.ipyn
 | Python | `lab` 계정으로 Python 3.12.16 소스 설치, 전용 가상환경 `/home/lab/venvs/vector-lab` |
 | 실습 폴더 | `/home/lab/labs/similarity_search` |
 | Jupyter | 서버의 `0.0.0.0:8888`에서 실행하고 외부 브라우저로 `http://<SERVER_IP>:8888/lab`에 직접 접속 |
-| DB | 별도로 준비한 Oracle AI Database PDB, 실습 스키마·모델·권한 |
+| DB | Notebook과 같은 서버의 Oracle AI Database PDB, localhost:1521 접속, 실습 스키마·모델·권한 |
 | LLM | RAG를 진행하는 경우에만 Ollama와 `llama3.2` 등 생성 모델 |
 
-문서의 `<SERVER_IP>`는 전달받은 실제 공인 IP로 바꿉니다. 가려진 `129.80.xxx.xxx`를 접속 명령에 그대로 사용하지 않습니다. **OS 계정 `lab`과 DB 계정은 별개**입니다. 아래 DB 계정 예시 `LABADMIN`은 실제 준비한 DB 계정으로 변경합니다.
+문서의 `<SERVER_IP>`는 전달받은 실제 공인 IP로 바꿉니다. 가려진 `129.80.xxx.xxx`를 접속 명령에 그대로 사용하지 않습니다. **OS 계정 `lab`과 DB 계정은 별개**입니다. Notebook에는 실제 준비한 DB 사용자명과 비밀번호를 입력합니다.
 
 진행 순서는 **SSH 접속 → OS 패키지 → 저장소 → 가상환경 → 패키지·커널 → 접속 변수 → Jupyter 설정·실행 → TCP 8888 접근 허용 → 외부 브라우저 접속 → Notebook 점검 → 실습**입니다. SSH는 서버 설치·관리 때 사용하고, Notebook 화면은 서버 공인 IP로 직접 엽니다.
 
@@ -182,16 +182,16 @@ jupyter kernelspec list
 
 목록에 `vector-lab`이 보여야 합니다. 나중에 Notebook을 열면 **Kernel → Change Kernel → Python (vector-lab)**을 선택합니다. 같은 이름으로 재등록하면 해당 커널 설정이 갱신됩니다. [IPython 커널 등록](https://ipython.readthedocs.io/en/stable/install/kernel_install.html)
 
-## 6. DB·Ollama 접속 변수 준비
+## 6. DB 접속 정보와 Ollama 변수 준비
 
 **실행 위치: 서버 SSH 터미널, `lab` 계정**
 
-아래 파일은 처음 한 번 작성합니다. 기존 파일이 있으면 내용을 먼저 확인하고 필요한 값만 수정합니다. 이 실습의 PDB 서비스명은 `orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com`을 사용합니다. DSN은 `DB호스트:1521/PDB서비스명` 형식이며, 아래 `DB_HOST`는 실제 DB 서버 IP 또는 Notebook 서버에서 이름 해석이 가능한 호스트명으로 반드시 바꿉니다. Notebook 서버 공인 IP가 DB 호스트와 같다고 가정하지 않습니다.
+Notebook과 DB는 같은 서버에서 실행합니다. DB 호스트는 `localhost`, 포트는 `1521`, PDB 서비스명은 `orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com`으로 고정하며, DSN은 `localhost:1521/orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com`입니다. DB 사용자명과 비밀번호는 Notebook에서 매번 입력받습니다. 기존 DB 접속 환경 변수는 사용하지 않습니다.
+
+아래 파일에는 Ollama 접속 변수만 저장합니다. 처음 한 번 작성하며 기존 파일이 있으면 내용을 먼저 확인하고 필요한 값만 수정합니다.
 
 ```bash
 cat > /home/lab/.config/vector-lab/env.sh <<'EOF'
-export ORACLE_USER='LABADMIN'
-export ORACLE_DSN='DB_HOST:1521/orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com'
 export OLLAMA_BASE_URL='http://127.0.0.1:11434'
 export OLLAMA_GENERATE_URL='http://127.0.0.1:11434/api/generate'
 export OLLAMA_MODEL='llama3.2'
@@ -201,9 +201,7 @@ vi /home/lab/.config/vector-lab/env.sh
 source /home/lab/.config/vector-lab/env.sh
 ```
 
-DB 비밀번호는 파일에 저장하지 않고 Notebook의 `getpass` 입력창에 입력합니다. `ORACLE_PASSWORD` 환경 변수를 지정하지 않으면 기존 노트북이 비밀번호를 물어봅니다.
-
-DB가 Notebook과 같은 서버에 있고 리스너가 localhost의 1521 포트에서 접속을 받는 경우 DSN은 `127.0.0.1:1521/orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com`으로 설정할 수 있습니다. 다른 서버의 DB라면 해당 DB 서버 주소를 사용합니다. Notebook의 DSN 입력창에도 같은 전체 문자열을 입력합니다. 서비스명만 단독으로 입력하지 않습니다.
+DB 비밀번호는 파일에 저장하지 않고 Notebook의 `getpass` 입력창에 입력합니다. `localhost` 접속에는 DB 리스너가 1521 포트에서 접속을 받고 해당 PDB 서비스가 등록되어 있어야 합니다. 브라우저용 공인 IP와 8888 포트는 DB 접속에 사용하지 않습니다.
 
 Ollama의 `127.0.0.1` 예시는 Jupyter 서버와 DB 서버가 모두 같은 호스트의 Ollama에 접근하는 경우입니다. 서버가 다르면 다음 두 값을 호출 주체별로 설정합니다.
 
@@ -361,11 +359,10 @@ assert Path("data/images/val_data").is_dir()
 다음 셀은 DB 접속·현재 PDB·모델 목록만 조회하며 테이블을 변경하지 않습니다.
 
 ```python
-import os
 from getpass import getpass
 
-db_user = os.environ["ORACLE_USER"]
-db_dsn = os.environ["ORACLE_DSN"]
+db_user = input("DB 사용자: ").strip()
+db_dsn = "localhost:1521/orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com"
 db_password = getpass("DB 비밀번호: ")
 with oracledb.connect(user=db_user, password=db_password, dsn=db_dsn) as conn:
     with conn.cursor() as cursor:
@@ -433,9 +430,8 @@ JupyterLab의 파일 탐색기에서 최상위 폴더로 돌아가 다음 순서
 | 이미지 파일을 찾지 못함 | `Path.cwd()`와 `data/images/val_data` 상대 경로 확인 |
 | 브라우저 접속 실패 | 서버 `0.0.0.0:8888` 대기, OS 방화벽, OCI NSG·보안 목록, 공인 IP·라우팅과 PC TCP 점검 확인 |
 | `Address already in use` | 서버에서 이미 8888을 사용하는 Jupyter 프로세스 확인 |
-| `ORACLE_USER` KeyError | Jupyter 실행 전 env.sh를 source했는지 확인 후 서버·커널 재시작 |
-| DB 연결·인증 오류 | `ORACLE_DSN`의 호스트·서비스·포트와 DB 사용자·비밀번호·네트워크 확인 |
-| `gaierror: [Errno -2] Name or service not known` | `print(repr(dbconn))`으로 확인 후 DSN의 `DB_HOST`·예시 호스트명을 실제 DB 주소로 변경. 서비스명은 `orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com` 사용 |
+| DB 연결·인증 오류 | localhost:1521 리스너, 지정 PDB 서비스 등록 상태, 입력한 DB 사용자·비밀번호 확인 |
+| `gaierror: [Errno -2] Name or service not known` | 최신 접속 셀을 다시 실행하고 `print(repr(dbconn))`으로 localhost DSN인지 확인. 예전 환경 변수 기반 셀을 실행하지 않았는지 확인 |
 | ONNX 모델 또는 테이블 없음 | 올바른 PDB·스키마인지 확인 후 해당 실습의 DB 준비 진행 |
 | Ollama 연결 실패 | Python용 기본 URL과 DB용 `/api/generate` URL의 호출 위치·모델·DB ACL 구분 |
 
