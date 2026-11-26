@@ -1,0 +1,9 @@
+# Notebook execution dependencies. Resolve together, then save pip freeze locally.
+jupyterlab>=4,<5
+ipykernel
+oracledb>=2.5
+pandas
+pillow
+matplotlib
+langchain-core
+langchain-ollama

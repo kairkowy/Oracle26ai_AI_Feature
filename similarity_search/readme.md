@@ -4,6 +4,8 @@ Oracle AI Database의 문서·이미지 유사도 검색, 문서·테이블 RAG,
 
 ## Jupyter Notebook
 
+처음 서버를 구성한다면 [Oracle Linux 9 Notebook 환경 구성 가이드](notebook/README.md)를 먼저 진행합니다. `lab` 계정의 Python 가상환경·JupyterLab 설치부터 SSH 터널 접속, DB·Ollama 점검까지 순서대로 설명합니다.
+
 Markdown 문서와 같은 이름의 노트북 6개를 복원했습니다. Python 작업 디렉터리를 `similarity_search`로 두고 실행합니다. 공통 함수는 `user_functions.py`를 사용합니다.
 
 - [문서 유사도 검색](1-1.simsearch_doc.ipynb)
