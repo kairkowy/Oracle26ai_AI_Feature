@@ -10,13 +10,13 @@ Oracle Linux 9 서버에 `lab` 계정으로 접속하여 이 저장소의 `.ipyn
 | SSH 접속 계정 | `lab` — `/home/lab` 홈 디렉터리가 있는 기존 OS 계정 |
 | Python | `lab` 계정으로 Python 3.12.16 소스 설치, 전용 가상환경 `/home/lab/venvs/vector-lab` |
 | 실습 폴더 | `/home/lab/labs/similarity_search` |
-| Jupyter | 서버의 `127.0.0.1:8888`에서 실행하고 SSH 터널로 접속 |
+| Jupyter | 서버의 `0.0.0.0:8888`에서 실행하고 외부 브라우저로 `http://<SERVER_IP>:8888/lab`에 직접 접속 |
 | DB | 별도로 준비한 Oracle AI Database PDB, 실습 스키마·모델·권한 |
 | LLM | RAG를 진행하는 경우에만 Ollama와 `llama3.2` 등 생성 모델 |
 
 문서의 `<SERVER_IP>`는 전달받은 실제 공인 IP로 바꿉니다. 가려진 `129.80.xxx.xxx`를 접속 명령에 그대로 사용하지 않습니다. **OS 계정 `lab`과 DB 계정은 별개**입니다. 아래 DB 계정 예시 `LABADMIN`은 실제 준비한 DB 계정으로 변경합니다.
 
-진행 순서는 **SSH 접속 → OS 패키지 → 저장소 → 가상환경 → 패키지·커널 → 접속 변수 → Jupyter 설정 → SSH 터널 → Notebook 점검 → 실습**입니다.
+진행 순서는 **SSH 접속 → OS 패키지 → 저장소 → 가상환경 → 패키지·커널 → 접속 변수 → Jupyter 설정·실행 → TCP 8888 접근 허용 → 외부 브라우저 접속 → Notebook 점검 → 실습**입니다. SSH는 서버 설치·관리 때 사용하고, Notebook 화면은 서버 공인 IP로 직접 엽니다.
 
 ## 1. PC에서 서버 접속
 
@@ -101,7 +101,7 @@ make altinstall
 
 `make altinstall`은 버전이 붙은 실행 파일을 설치합니다. `sudo make install`이나 `/usr/bin/python3` 교체는 수행하지 않습니다. 이후에는 설치된 실행 파일의 절대 경로로 가상환경을 생성하므로 전역 PATH 변경도 필요하지 않습니다. [Python Unix 소스 빌드](https://docs.python.org/3.12/using/unix.html) · [설치 경로 지정](https://docs.python.org/3.12/using/configure.html#cmdoption-prefix)
 
-나머지 가상환경·Jupyter 설정도 `lab`으로 수행합니다. 이 구성에서는 Jupyter용 공인 TCP 8888 포트를 추가로 열 필요가 없습니다.
+나머지 가상환경·Jupyter 설정도 `lab`으로 수행합니다. 외부 브라우저 접속을 위해 9단계에서 서버 방화벽과 OCI 네트워크의 TCP 8888 접근을 허용합니다.
 
 ## 3. 실습 저장소 받기
 
@@ -233,7 +233,8 @@ if [ -f /home/lab/.jupyter/jupyter_server_config.py ]; then
 fi
 cat > /home/lab/.jupyter/jupyter_server_config.py <<'EOF'
 c = get_config()
-c.ServerApp.ip = '127.0.0.1'
+c.ServerApp.ip = '0.0.0.0'
+c.ServerApp.allow_remote_access = True
 c.ServerApp.port = 8888
 c.ServerApp.port_retries = 0
 c.ServerApp.open_browser = False
@@ -242,7 +243,9 @@ EOF
 chmod 600 /home/lab/.jupyter/jupyter_server_config.py
 ```
 
-Jupyter는 loopback 주소에서만 대기합니다. SSH 터널이 브라우저와 서버를 연결합니다. 토큰·비밀번호 인증을 끄거나 `allow_origin='*'`를 추가할 필요가 없습니다. 기존 설정에 별도 확장·프록시 구성이 있으면 백업 파일과 비교해 필요한 설정을 합칩니다.
+Jupyter는 모든 IPv4 인터페이스에서 대기하고 외부 Host 헤더를 허용합니다. `0.0.0.0`은 수신 설정이며 브라우저 주소에는 서버의 실제 공인 IP를 사용합니다. 비밀번호 인증은 유지하며 `allow_origin='*'`를 추가할 필요가 없습니다. 기존 설정에 별도 확장·프록시 구성이 있으면 백업 파일과 비교해 필요한 설정을 합칩니다. 이미 실행 중인 Jupyter가 있다면 종료한 뒤 다시 시작해야 변경 사항이 적용됩니다.
+
+이 문서의 HTTP 접속은 통신을 암호화하지 않습니다. 실습에서는 9단계처럼 접속할 PC의 공인 IP로 접근을 제한하며, 지속적인 외부 운영에는 HTTPS를 적용합니다. [Jupyter 외부 접속 설정](https://jupyter-server.readthedocs.io/en/latest/operators/public-server.html)
 
 ## 8. JupyterLab 실행
 
@@ -258,7 +261,7 @@ cd /home/lab/labs/similarity_search
 jupyter lab --no-browser
 ```
 
-로그에 `http://127.0.0.1:8888/lab` 형태의 주소가 보여야 합니다. `Ctrl+B`를 누른 뒤 `D`를 누르면 서버를 유지한 채 tmux에서 나옵니다. 이미 세션이 있다면 `tmux attach -t vector-notebook`으로 돌아갑니다. tmux는 SSH 연결 종료에는 대응하지만 OS 재부팅 시 자동 기동되지는 않습니다.
+로그에서 TCP 8888의 JupyterLab이 시작됐는지 확인합니다. 로그에 localhost나 내부 호스트명이 표시되어도 외부 브라우저에는 9단계의 공인 IP 주소를 입력합니다. `Ctrl+B`를 누른 뒤 `D`를 누르면 서버를 유지한 채 tmux에서 나옵니다. 이미 세션이 있다면 `tmux attach -t vector-notebook`으로 돌아갑니다. tmux는 SSH 연결 종료에는 대응하지만 OS 재부팅 시 자동 기동되지는 않습니다.
 
 같은 서버의 별도 SSH 터미널에서 대기 주소를 확인할 수 있습니다.
 
@@ -267,33 +270,63 @@ ss -lnt | grep ':8888'
 curl -I http://127.0.0.1:8888/lab
 ```
 
-대기 주소는 `127.0.0.1:8888`이어야 합니다. 로그인 전 HTTP 리다이렉트가 반환될 수 있으며, HTTP 응답 수신은 서버 기동만 확인합니다. 최종 로그인과 커널 실행은 다음 단계에서 확인합니다.
+대기 주소는 `0.0.0.0:8888`이어야 합니다. 여기서 `curl`의 `127.0.0.1`은 서버 내부 동작을 확인하기 위한 주소입니다. 로그인 전 HTTP 리다이렉트가 반환될 수 있으며, HTTP 응답 수신은 서버 기동만 확인합니다. 최종 외부 로그인과 커널 실행은 다음 단계에서 확인합니다.
 
-## 9. PC에서 SSH 터널과 브라우저 접속
+## 9. 방화벽 허용과 외부 브라우저 직접 접속
 
-**실행 위치: 사용자 PC의 새 PowerShell 창**
+### 9-1. 서버 OS 방화벽
+
+**실행 위치: 서버 SSH 터미널, sudo가 가능한 계정**
+
+firewalld를 사용하는 서버는 상태와 네트워크 인터페이스에 적용된 zone부터 확인합니다.
+
+```bash
+sudo firewall-cmd --state
+sudo firewall-cmd --get-active-zones
+```
+
+아래 `CLIENT_CIDR`는 브라우저를 사용할 **PC 또는 회사 NAT의 실제 공인 IP/32**로 변경합니다. 서버 IP나 PC의 사설 IP가 아닙니다. `203.0.113.10`은 설명용 주소입니다. `JUPYTER_ZONE`도 위에서 확인한 실제 zone으로 변경합니다.
+
+```bash
+JUPYTER_ZONE='public'
+CLIENT_CIDR='203.0.113.10/32'
+JUPYTER_RULE="rule family=\"ipv4\" source address=\"${CLIENT_CIDR}\" port port=\"8888\" protocol=\"tcp\" accept"
+sudo firewall-cmd --zone="$JUPYTER_ZONE" --add-rich-rule="$JUPYTER_RULE"
+sudo firewall-cmd --permanent --zone="$JUPYTER_ZONE" --add-rich-rule="$JUPYTER_RULE"
+sudo firewall-cmd --zone="$JUPYTER_ZONE" --list-rich-rules
+```
+
+현재와 영구 설정에 같은 규칙을 추가합니다. firewalld가 비활성 상태이거나 다른 방화벽을 사용하는 서버라면 관리자에게 해당 방화벽의 동일한 접근 규칙을 요청합니다. 기존에 8888이 전체 주소에 허용되어 있으면 위 규칙 추가만으로 접근이 제한되지는 않으므로 기존 규칙도 확인합니다. [firewalld 규칙 명령](https://firewalld.org/documentation/man-pages/firewall-cmd.html)
+
+### 9-2. OCI 보안 목록 또는 NSG
+
+**실행 위치: OCI 콘솔, 네트워크 설정 권한이 있는 계정**
+
+인스턴스 VNIC에 연결된 NSG 또는 서브넷 보안 목록에 다음 수신 규칙을 추가합니다.
+
+| 항목 | 값 |
+| --- | --- |
+| 상태 | Stateful — Stateless 선택 해제 |
+| 소스 유형 | CIDR |
+| 소스 CIDR | 위 `CLIENT_CIDR`와 같은 PC·회사 공인 IP/32 |
+| IP 프로토콜 | TCP |
+| 소스 포트 범위 | 전체 |
+| 대상 포트 범위 | `8888` |
+
+인스턴스에 실제 공인 IP가 연결되어 있고 서브넷의 인터넷 게이트웨이·라우팅도 구성되어 있어야 합니다. 회사망에서 TCP 8888 송신이 차단되면 네트워크 담당자에게 확인합니다. [OCI 네트워크 보안 규칙](https://docs.oracle.com/en-us/iaas/Content/Network/Concepts/securityrules.htm)
+
+### 9-3. 외부 PC에서 접속
+
+**실행 위치: 사용자 PC의 PowerShell**
 
 ```powershell
 $LabHost = '<SERVER_IP>'
-ssh -N -L 8888:127.0.0.1:8888 -o ExitOnForwardFailure=yes "lab@$LabHost"
+Test-NetConnection -ComputerName $LabHost -Port 8888
 ```
 
-SSH 키를 사용하는 경우 다음 명령을 사용합니다.
+`TcpTestSucceeded : True`이면 브라우저 주소창에 `http://<SERVER_IP>:8888/lab`을 입력하고 7단계에서 설정한 Jupyter 비밀번호로 로그인합니다. `<SERVER_IP>`는 실제 서버 공인 IP로 변경합니다. 별도 SSH 터널 명령이나 PC의 로컬 포트 설정은 필요하지 않습니다. 브라우저의 자동 HTTPS 전환 기능을 사용하는 경우 이 실습 서버의 프로토콜이 `http://`인지 확인합니다.
 
-```powershell
-$LabHost = '<SERVER_IP>'
-ssh -i "$env:USERPROFILE\.ssh\lab_key" -N -L 8888:127.0.0.1:8888 -o ExitOnForwardFailure=yes "lab@$LabHost"
-```
-
-터널 창은 출력 없이 대기하는 것이 정상입니다. 창을 유지한 상태로 PC 브라우저에서 [JupyterLab 접속](http://127.0.0.1:8888/lab)을 열고 7단계 비밀번호로 로그인합니다. 공인 IP의 `:8888` 주소로 접속하지 않습니다.
-
-PC의 8888 포트를 다른 프로그램이 사용 중이면 로컬 포트만 8889로 바꿉니다.
-
-```powershell
-ssh -N -L 8889:127.0.0.1:8888 -o ExitOnForwardFailure=yes "lab@$LabHost"
-```
-
-이 경우 브라우저 주소는 `http://127.0.0.1:8889/lab`입니다. 키 인증이면 위와 같이 `-i` 옵션도 함께 넣습니다.
+서버 내부 curl은 성공하지만 PC의 TCP 점검이 실패하면 OS 방화벽 → OCI NSG·보안 목록 → 공인 IP·라우팅 → 회사망 송신 정책 순서로 확인합니다. TCP는 연결되지만 Notebook 실행이 실패하면 Jupyter 로그, 선택한 커널과 브라우저 WebSocket 연결을 확인합니다.
 
 ## 10. Notebook에서 Python 환경과 DB 접속 확인
 
@@ -381,7 +414,7 @@ JupyterLab의 파일 탐색기에서 최상위 폴더로 돌아가 다음 순서
 
 [user_functions.ipynb](../user_functions.ipynb)는 함수 참고용입니다. 실습은 같은 폴더의 `user_functions.py`를 import하므로 먼저 실행할 필요가 없습니다. 노트북 안의 테이블 생성 SQL은 11단계에서 따로 실행하며, 벡터 초기화·TRUNCATE·인덱스 삭제 셀은 해당 실습 객체를 대상으로 하는지 확인합니다.
 
-실습이 끝나면 커널을 종료합니다. Jupyter 서버까지 종료할 때는 서버 터미널에서 `tmux attach -t vector-notebook`으로 돌아가 `Ctrl+C` 후 종료 확인에 응답합니다. PC의 SSH 터널도 `Ctrl+C`로 종료합니다.
+실습이 끝나면 커널을 종료합니다. Jupyter 서버까지 종료할 때는 서버 터미널에서 `tmux attach -t vector-notebook`으로 돌아가 `Ctrl+C` 후 종료 확인에 응답합니다.
 
 다음 접속 때는 새로 설치하지 않고 `lab`으로 SSH 로그인한 후 8~9단계를 수행합니다. 기존 tmux 세션이 실행 중이면 attach만 하면 됩니다.
 
@@ -396,8 +429,8 @@ JupyterLab의 파일 탐색기에서 최상위 폴더로 돌아가 다음 순서
 | `ModuleNotFoundError` | `sys.executable`과 선택한 커널 확인, 해당 venv에서 requirements 재설치 |
 | `No module named user_functions` | 작업 디렉터리를 `similarity_search`로 변경하고 `user_functions.py` 존재 확인 |
 | 이미지 파일을 찾지 못함 | `Path.cwd()`와 `data/images/val_data` 상대 경로 확인 |
-| 브라우저 접속 실패 | tmux의 서버 로그, 서버 `127.0.0.1:8888` 대기, PC SSH 터널 순서로 확인 |
-| `Address already in use` | PC 측 포트 충돌이면 로컬 8889 사용, 서버 측이면 기존 Jupyter 프로세스 확인 |
+| 브라우저 접속 실패 | 서버 `0.0.0.0:8888` 대기, OS 방화벽, OCI NSG·보안 목록, 공인 IP·라우팅과 PC TCP 점검 확인 |
+| `Address already in use` | 서버에서 이미 8888을 사용하는 Jupyter 프로세스 확인 |
 | `ORACLE_USER` KeyError | Jupyter 실행 전 env.sh를 source했는지 확인 후 서버·커널 재시작 |
 | DB 연결·인증 오류 | `ORACLE_DSN`의 호스트·서비스·포트와 DB 사용자·비밀번호·네트워크 확인 |
 | ONNX 모델 또는 테이블 없음 | 올바른 PDB·스키마인지 확인 후 해당 실습의 DB 준비 진행 |
