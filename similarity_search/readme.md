@@ -2,7 +2,7 @@
 
 Oracle AI Database의 벡터 기능으로 **문서·이미지를 검색하고, 검색 결과를 LLM의 답변 근거로 활용**하는 실습 자료입니다. 키워드와 벡터 검색을 결합하는 Hybrid 예제도 포함합니다.
 
-원본 Jupyter Notebook 6개를 Markdown 문서로 전환하고, 실행에 필요한 공통 Python 함수를 별도 모듈로 정리했습니다. SQL·Python 코드와 단계별 설명은 각 문서에서 확인합니다. Jupyter는 선택 사항이며, Markdown 자체가 실행 파일은 아닙니다.
+로컬 실습 자료의 문서·노트북·데이터를 반영하고, 실행에 필요한 공통 Python 함수를 별도 모듈로 정리했습니다. SQL·Python 코드와 단계별 설명은 각 문서에서 확인합니다. Jupyter에서는 아래 노트북을 사용할 수 있으며, Markdown 자체가 실행 파일은 아닙니다.
 
 ## 문서와 권장 순서
 
@@ -17,6 +17,27 @@ Oracle AI Database의 벡터 기능으로 **문서·이미지를 검색하고, �
 | 참고 | [공통 함수 설명](user_functions.md) · [Python 모듈](user_functions.py) | DB 연결·조회·DML·LOB 처리·표와 이미지 출력 |
 
 처음에는 공통 준비 후 **문서 유사도 검색 → 문서 RAG**로 진행합니다. 이미지 검색과 테이블 RAG는 목적에 따라 선택할 수 있습니다. Hybrid는 문서 검색을 확인한 뒤 진행하며 별도 하이브리드 인덱스를 준비합니다.
+
+## Jupyter Notebook
+
+노트북은 로컬 원본의 시나리오를 기존 Markdown의 정리된 코드와 설명에 맞췄습니다. 접속 정보는 환경 변수 또는 입력을 사용하며, 실행 결과는 비워 두었습니다. 공통 함수는 `user_functions.py`를 사용하므로 함수 노트북을 먼저 실행할 필요가 없습니다. 노트북의 SQL 블록은 SQL 클라이언트에서 별도로 실행합니다.
+
+- [문서 유사도 검색](1-1.simsearch_doc.ipynb)
+- [이미지 유사도 검색](1-2.smsearch_image.ipynb)
+- [문서 RAG](2-1.RAG_DOC.ipynb)
+- [테이블 RAG](2-2.RAG_Table.ipynb)
+- [하이브리드 검색](3.Hybrid_search.ipynb)
+- [공통 함수 설명](user_functions.ipynb)
+
+## 추가 환경 자료와 스크립트
+
+- [Oracle·Ollama 환경 준비 참고 자료](오라클%20-%20Ollama%20환경%20RAG%20예제%20시나리오%20준비.md): 로컬 원본의 23ai 환경 구성 기록입니다. 현재 실습의 공통 준비는 [00.Setup.md](00.Setup.md)를 기준으로 합니다.
+- [한국어 하이브리드 인덱싱 상세 자료](오라클%20벡터%20hybrid%20indexing%20사용%20방법.md): 한국어 lexer·vectorizer preference·검색 예제를 포함합니다.
+- [similarity_config.sql](similarity_config.sql): 로컬 자료의 파일명으로 실행할 수 있는 진입점이며, 정리된 [similarity_search_config.sql](similarity_search_config.sql)을 호출합니다.
+- [cr_users.sh](cr_users.sh): Linux 실습 OS 계정 `lab01`~`lab25` 생성 예제입니다. 관리자 권한이 필요하며, 원본의 사용자명과 동일한 초기 비밀번호는 사용 환경에 맞게 바꿉니다.
+- [multi_user_config.sql](multi_user_config.sql): DB 계정 `USER_01`~`USER_NN` 삭제 대상 확인용입니다. 기본값은 삭제하지 않으며, `DO_DELETE=YES`로 변경한 경우에만 계정과 객체를 삭제합니다. OS 계정 생성 스크립트와 계정 체계가 다릅니다. 원본 메모가 참조한 `create_users.sql`은 제공되지 않았습니다.
+
+로컬 데이터의 PDF·HWPX·CSV·이미지·검증용 이미지를 모두 대조했습니다. `.ipynb_checkpoints` 자동 백업과 다른 PC에서 사용할 수 없는 Windows `.lnk` 바로가기는 배포 대상에서 제외했습니다. 바로가기 대상인 Ollama 오프라인 설치 문서의 본문은 원본 폴더에 없습니다.
 
 ## 실습 전 준비 사항
 
@@ -59,6 +80,6 @@ DB 서버의 DIRECTORY 경로와 Python의 상대 경로는 서로 다릅니다.
 - [Oracle Hybrid SEARCH](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/search.html)
 - [python-oracledb VECTOR 지원](https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html)
 
-문서 전환과 코드 정적 검토 기준일은 2026-11-11입니다. 실제 DB·ONNX 모델·Ollama에 연결한 실행 검증은 수행하지 않았습니다.
+로컬 문서·데이터 반영 및 파일 정합성 검토 기준일은 2026-11-26입니다. 실제 DB·ONNX 모델·Ollama에 연결한 실행 검증은 수행하지 않았습니다.
 
 [상위 문서: 저장소 소개](../README.md) · [Select AI 실습](../SelectAI/README.md)
