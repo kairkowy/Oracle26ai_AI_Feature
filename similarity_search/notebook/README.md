@@ -186,12 +186,12 @@ jupyter kernelspec list
 
 **실행 위치: 서버 SSH 터미널, `lab` 계정**
 
-아래 파일은 처음 한 번 작성합니다. 기존 파일이 있으면 내용을 먼저 확인하고 필요한 값만 수정합니다. `DB_HOST`, 포트와 `FREEPDB1` 서비스는 DBA가 제공한 실제 값으로 바꿉니다. Notebook 서버 공인 IP가 DB 호스트와 같다고 가정하지 않습니다.
+아래 파일은 처음 한 번 작성합니다. 기존 파일이 있으면 내용을 먼저 확인하고 필요한 값만 수정합니다. 이 실습의 PDB 서비스명은 `orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com`을 사용합니다. DSN은 `DB호스트:1521/PDB서비스명` 형식이며, 아래 `DB_HOST`는 실제 DB 서버 IP 또는 Notebook 서버에서 이름 해석이 가능한 호스트명으로 반드시 바꿉니다. Notebook 서버 공인 IP가 DB 호스트와 같다고 가정하지 않습니다.
 
 ```bash
 cat > /home/lab/.config/vector-lab/env.sh <<'EOF'
 export ORACLE_USER='LABADMIN'
-export ORACLE_DSN='DB_HOST:1521/FREEPDB1'
+export ORACLE_DSN='DB_HOST:1521/orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com'
 export OLLAMA_BASE_URL='http://127.0.0.1:11434'
 export OLLAMA_GENERATE_URL='http://127.0.0.1:11434/api/generate'
 export OLLAMA_MODEL='llama3.2'
@@ -202,6 +202,8 @@ source /home/lab/.config/vector-lab/env.sh
 ```
 
 DB 비밀번호는 파일에 저장하지 않고 Notebook의 `getpass` 입력창에 입력합니다. `ORACLE_PASSWORD` 환경 변수를 지정하지 않으면 기존 노트북이 비밀번호를 물어봅니다.
+
+DB가 Notebook과 같은 서버에 있고 리스너가 localhost의 1521 포트에서 접속을 받는 경우 DSN은 `127.0.0.1:1521/orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com`으로 설정할 수 있습니다. 다른 서버의 DB라면 해당 DB 서버 주소를 사용합니다. Notebook의 DSN 입력창에도 같은 전체 문자열을 입력합니다. 서비스명만 단독으로 입력하지 않습니다.
 
 Ollama의 `127.0.0.1` 예시는 Jupyter 서버와 DB 서버가 모두 같은 호스트의 Ollama에 접근하는 경우입니다. 서버가 다르면 다음 두 값을 호출 주체별로 설정합니다.
 
@@ -433,6 +435,7 @@ JupyterLab의 파일 탐색기에서 최상위 폴더로 돌아가 다음 순서
 | `Address already in use` | 서버에서 이미 8888을 사용하는 Jupyter 프로세스 확인 |
 | `ORACLE_USER` KeyError | Jupyter 실행 전 env.sh를 source했는지 확인 후 서버·커널 재시작 |
 | DB 연결·인증 오류 | `ORACLE_DSN`의 호스트·서비스·포트와 DB 사용자·비밀번호·네트워크 확인 |
+| `gaierror: [Errno -2] Name or service not known` | `print(repr(dbconn))`으로 확인 후 DSN의 `DB_HOST`·예시 호스트명을 실제 DB 주소로 변경. 서비스명은 `orclpdb2.subnet0lab23ai.labswoko.oraclevcn.com` 사용 |
 | ONNX 모델 또는 테이블 없음 | 올바른 PDB·스키마인지 확인 후 해당 실습의 DB 준비 진행 |
 | Ollama 연결 실패 | Python용 기본 URL과 DB용 `/api/generate` URL의 호출 위치·모델·DB ACL 구분 |
 
