@@ -8,7 +8,7 @@ Oracle Linux 9 서버에 `lab` 계정으로 접속하여 이 저장소의 `.ipyn
 | --- | --- |
 | 서버 | Oracle Linux 9.4 이상, 공인 IP `129.80.xxx.xxx` |
 | SSH 접속 계정 | `lab` — `/home/lab` 홈 디렉터리가 있는 기존 OS 계정 |
-| Python | Python 3.12, 전용 가상환경 `/home/lab/venvs/vector-lab` |
+| Python | `lab` 계정으로 Python 3.12.16 소스 설치, 전용 가상환경 `/home/lab/venvs/vector-lab` |
 | 실습 폴더 | `/home/lab/labs/Oracle26ai_AI_Feature/similarity_search` |
 | Jupyter | 서버의 `127.0.0.1:8888`에서 실행하고 SSH 터널로 접속 |
 | DB | 별도로 준비한 Oracle AI Database PDB, 실습 스키마·모델·권한 |
@@ -49,17 +49,59 @@ uname -m
 
 ## 2. OS 패키지 설치
 
-**실행 위치: 서버 SSH 터미널, sudo가 가능한 계정**
+Python은 `lab` 계정으로 소스를 다운로드·빌드하여 `/home/lab/python/3.12.16`에 설치합니다. OS 기본 Python은 그대로 사용하며, Python 설치 과정에서는 `sudo`를 사용하지 않습니다.
+
+### 2-1. 빌드에 필요한 OS 패키지 준비
+
+**실행 위치: 서버 SSH 터미널, sudo가 가능한 계정 — 관리자 준비 작업**
+
+컴파일러와 개발 라이브러리만 OS 패키지로 설치합니다. `lab`에 sudo 권한이 없으면 이 단계만 관리자에게 요청한 뒤, 다음 단계부터 `lab`으로 진행합니다.
 
 ```bash
 sudo dnf repolist
-sudo dnf install -y git curl tmux python3.12 python3.12-pip
-python3.12 --version
+sudo dnf install -y git curl tmux tar xz gcc make pkgconf-pkg-config \
+  openssl-devel bzip2-devel libffi-devel zlib-devel xz-devel \
+  readline-devel sqlite-devel ncurses-devel libuuid-devel tk-devel
 ```
 
-Oracle Linux 9.4 이상은 Python 3.12 패키지를 제공하며, 기본 `python3`는 3.9일 수 있으므로 가상환경 생성 때 `python3.12`를 명시합니다. `python3.12` 패키지를 찾을 수 없다면 OS 마이너 버전과 `ol9_appstream` 저장소 구성을 관리자와 확인합니다. OL9.2~9.3을 유지해야 한다면 Python 3.11 패키지·가상환경으로 이 문서의 `python3.12` 명령을 일관되게 바꿉니다. [Oracle Linux Python 설치](https://docs.oracle.com/en/operating-systems/oracle-linux/9/python/python-InstallingPython.html)
+### 2-2. lab 계정으로 Python 소스 다운로드
 
-`lab`에 sudo 권한이 없으면 이 단계만 관리자에게 요청합니다. 나머지 가상환경·Jupyter 설정은 `lab`으로 수행합니다. 이 구성에서는 Jupyter용 공인 TCP 8888 포트를 추가로 열 필요가 없습니다.
+**실행 위치: 서버 SSH 터미널, `lab` 계정**
+
+```bash
+whoami
+mkdir -p /home/lab/src /home/lab/python
+cd /home/lab/src
+PYTHON_VERSION=3.12.16
+curl --fail --location --show-error \
+  --output "Python-${PYTHON_VERSION}.tar.xz" \
+  "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz"
+tar -xf "Python-${PYTHON_VERSION}.tar.xz"
+cd "/home/lab/src/Python-${PYTHON_VERSION}"
+```
+
+`whoami` 결과가 `lab`인지 확인합니다. 예제 버전은 [Python 3.12.16 공식 배포본](https://www.python.org/downloads/release/python-31216/)입니다. 버전을 변경하면 아래 설치 경로와 4단계의 가상환경 생성 명령도 같은 버전으로 맞춥니다.
+
+### 2-3. lab 홈 디렉터리에 빌드·설치
+
+**실행 위치: 서버 SSH 터미널, `lab` 계정 — 위 Python 소스 디렉터리**
+
+```bash
+./configure --prefix="/home/lab/python/${PYTHON_VERSION}" \
+  --with-ensurepip=upgrade
+make -j2
+make altinstall
+/home/lab/python/3.12.16/bin/python3.12 --version
+/home/lab/python/3.12.16/bin/python3.12 -m pip --version
+/home/lab/python/3.12.16/bin/python3.12 -c \
+  "import ssl, sqlite3, bz2, lzma, ctypes, zlib, readline; print(ssl.OPENSSL_VERSION)"
+```
+
+각 명령의 성공을 확인한 후 다음 명령으로 진행합니다. 컴파일 중 SSH 세션을 다시 열었다면 `PYTHON_VERSION=3.12.16`을 다시 지정하고 해당 소스 디렉터리로 이동합니다. 병렬 빌드는 `-j2`를 기준으로 하며 메모리가 부족하면 `make -j1`로 진행합니다.
+
+`make altinstall`은 버전이 붙은 실행 파일을 설치합니다. `sudo make install`이나 `/usr/bin/python3` 교체는 수행하지 않습니다. 이후에는 설치된 실행 파일의 절대 경로로 가상환경을 생성하므로 전역 PATH 변경도 필요하지 않습니다. [Python Unix 소스 빌드](https://docs.python.org/3.12/using/unix.html) · [설치 경로 지정](https://docs.python.org/3.12/using/configure.html#cmdoption-prefix)
+
+나머지 가상환경·Jupyter 설정도 `lab`으로 수행합니다. 이 구성에서는 Jupyter용 공인 TCP 8888 포트를 추가로 열 필요가 없습니다.
 
 ## 3. 실습 저장소 받기
 
@@ -83,14 +125,14 @@ git pull --ff-only
 cd similarity_search
 ```
 
-수정된 파일이나 충돌이 있으면 보존·정리한 후 갱신합니다. 노트북 6개와 `user_functions.py`, `data` 폴더가 보여야 합니다. 설치 중 인터넷으로 Oracle Linux 저장소, GitHub, PyPI 및 패키지 배포 호스트에 접근할 수 있어야 합니다. 폐쇄망은 같은 OS·CPU 아키텍처·Python 버전의 온라인 환경에서 패키지와 의존 wheel을 준비해 반입합니다.
+수정된 파일이나 충돌이 있으면 보존·정리한 후 갱신합니다. 노트북 6개와 `user_functions.py`, `data` 폴더가 보여야 합니다. 설치 중 인터넷으로 Oracle Linux 저장소, python.org, GitHub, PyPI 및 패키지 배포 호스트에 접근할 수 있어야 합니다. 폐쇄망은 Python 소스 아카이브와 OS 빌드 의존 패키지를 먼저 준비하고, 같은 OS·CPU 아키텍처·Python 버전의 온라인 환경에서 Python 의존 wheel도 준비해 반입합니다.
 
 ## 4. Python 가상환경 생성과 패키지 설치
 
 **실행 위치: 서버 SSH 터미널, `lab` 계정**
 
 ```bash
-python3.12 -m venv /home/lab/venvs/vector-lab
+/home/lab/python/3.12.16/bin/python3.12 -m venv /home/lab/venvs/vector-lab
 source /home/lab/venvs/vector-lab/bin/activate
 python --version
 command -v python
@@ -341,7 +383,10 @@ JupyterLab의 파일 탐색기에서 최상위 폴더로 돌아가 다음 순서
 
 | 증상 | 확인·조치 |
 | --- | --- |
-| `No match for argument: python3.12` | OL9.4 이상 여부, AppStream 저장소와 네트워크 확인 |
+| 빌드 의존 패키지를 찾지 못함 | 2-1단계의 패키지 이름, OS 저장소와 네트워크를 관리자와 확인 |
+| `configure: error` 또는 `make` 실패 | 2-1단계의 개발 패키지와 빌드 로그 확인, 메모리 부족 시 `make -j1` 사용 |
+| `_ssl`·`_ctypes` 등 모듈을 찾지 못함 | 해당 개발 라이브러리를 준비한 뒤 Python configure·빌드·설치를 다시 수행하고 2-3단계 import 점검 |
+| `python3.12: command not found` | 전역 명령 대신 `/home/lab/python/3.12.16/bin/python3.12` 절대 경로 사용 |
 | `ModuleNotFoundError` | `sys.executable`과 선택한 커널 확인, 해당 venv에서 requirements 재설치 |
 | `No module named user_functions` | 작업 디렉터리를 `similarity_search`로 변경하고 `user_functions.py` 존재 확인 |
 | 이미지 파일을 찾지 못함 | `Path.cwd()`와 `data/images/val_data` 상대 경로 확인 |
